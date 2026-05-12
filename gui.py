@@ -7,12 +7,6 @@ from rle_manager import RLEManager
 
 class GameOfLifeGUI:
 
-    # Color codes
-    #DEAD_CELL_CLR  = "#7e7e7e"
-    #ALIVE_CELL_CLR = "#ffff00"
-    BORDER_CLR     = "#999999"
-    #CLR_CLK_BTN    = "#2F2FE4"
-
     # Color palette
     CLR_BG = "#112736"
     CLR_DEAD_CELL = "#A3A3A1"
@@ -20,12 +14,13 @@ class GameOfLifeGUI:
     CLR_CELL_BORDER = ""
     CLR_CLK_BTN = "#456882"
     CLR_GREYED_BTN = "#D2C1B6"
-    #font_bold      = font.Font(family="Arial", size=14, weight="bold")
+    CLR_BTN_BD = "#234C6A" # Button border
 
     def __init__(
             self, root: tk.Tk, engine: GameOfLife, rle_manager: RLEManager,
             cell_size: int = 23, speed: int = 1
         ):
+
         self.engine = engine
         self.rle_manager = rle_manager
         self.cell_size = cell_size
@@ -33,13 +28,19 @@ class GameOfLifeGUI:
         self.speed = speed
         self.frames = []
 
-        self.root.geometry('650x700')
+        self.root.geometry('750x700')
         self.root.title("Conway's Game of Life")
 
         # Game state        
         self.job_id   = None
         self.running  = False
         self.dragging = False
+
+        # Settings window
+        self.settings_window = None
+        self.cols_entry = None
+        self.rows_entry = None
+        self.cell_size_entry = None
 
         self.slider_var = tk.IntVar(value=1)
 
@@ -54,49 +55,67 @@ class GameOfLifeGUI:
 
         self.start_btn = tk.Button(
             self.ctrl_frame, text="Start", bg=self.CLR_GREYED_BTN, fg="#ffffff",
-            borderwidth=0, highlightthickness=0, relief="flat", state=tk.DISABLED,
-            command=self.start,
+            bd=0, highlightthickness=2, relief="flat", state=tk.DISABLED,
+            command=self.start,highlightbackground=self.CLR_BTN_BD, activebackground=self.CLR_BTN_BD, activeforeground="#ffffff",
             font=("Segoe UI", 13), padx=3, pady=3
         )
 
         self.step_btn = tk.Button(
             self.ctrl_frame, text="Step", bg=self.CLR_GREYED_BTN, fg="#ffffff",
-            borderwidth=0, highlightthickness=0, relief="flat", state=tk.DISABLED,
-            command=self.step_gui,
+            bd=0, highlightthickness=2, relief="flat", state=tk.DISABLED,
+            command=self.step_gui,highlightbackground=self.CLR_BTN_BD, activebackground=self.CLR_BTN_BD, activeforeground="#ffffff",
             padx=10, pady=5
         )
         
         self.clear_btn = tk.Button(
             self.ctrl_frame, text="Clear", bg=self.CLR_GREYED_BTN, fg="#ffffff",
-            borderwidth=0, highlightthickness=0, relief="flat", state=tk.DISABLED,
-            command=self.clear_gui,
+            bd=0, highlightthickness=2, relief="flat", state=tk.DISABLED,
+            command=self.clear_gui,highlightbackground=self.CLR_BTN_BD, activebackground=self.CLR_BTN_BD, activeforeground="#ffffff",
             padx=10, pady=5
         )
 
         self.random_btn = tk.Button(
             self.ctrl_frame, text="Random", bg=self.CLR_CLK_BTN, fg="#ffffff",
-            borderwidth=0, highlightthickness=0, relief="flat",
-            command=self.random,
+            bd=0, highlightthickness=2, relief="flat",
+            command=self.random,highlightbackground=self.CLR_BTN_BD, activebackground=self.CLR_BTN_BD, activeforeground="#ffffff",
             padx=10, pady=5
         )
 
         self.speed_slider = tk.Scale(
             self.ctrl_frame, from_=-10, to=10, orient="horizontal", label="1 gen/sec",
             variable=self.slider_var, showvalue=0, command=self.speed_control,
-            background=self.CLR_BG, highlightbackground=self.CLR_BG, fg="#ffffff",
+            bg=self.CLR_BG, highlightbackground=self.CLR_BG, fg="#ffffff",
             relief="flat", sliderrelief="flat", troughcolor=self.CLR_CLK_BTN
         )
         self.speed_slider.set(1)
 
         self.presets_opts = tk.StringVar(value="Select preset")
-        self.preset_opts_list = tk.OptionMenu(self.ctrl_frame, self.presets_opts, *self.rle_manager.available_patterns, command=self.select_preset)
+        self.preset_opts_list = tk.OptionMenu(
+            self.ctrl_frame, self.presets_opts,
+            *self.rle_manager.available_patterns, command=self.select_preset
+        )
+        self.preset_opts_list.config(
+            relief="flat", bg=self.CLR_CLK_BTN, fg="#ffffff", bd=0,
+            highlightthickness=2, highlightbackground=self.CLR_BTN_BD,
+            activebackground=self.CLR_BTN_BD, activeforeground="#ffffff"
+        )
+        self.preset_opts_list["menu"].config(
+            bg=self.CLR_BG, fg="#ffffff", bd=0, relief="flat" # TODO Remove border
+        )
 
         self.export_gif_btn = tk.Button(
             self.ctrl_frame, text="Export GIF", bg=self.CLR_CLK_BTN, fg="#ffffff",
-            borderwidth=0, highlightthickness=0, relief="flat",
-            command=self.save_recording,
+            bd=0, highlightthickness=2, relief="flat",
+            command=self.save_recording,highlightbackground=self.CLR_BTN_BD, activebackground=self.CLR_BTN_BD, activeforeground="#ffffff",
             padx=10, pady=5
-        )        
+        )
+
+        self.open_settings_btn = tk.Button(
+            self.ctrl_frame, text="Settings", bg=self.CLR_CLK_BTN, fg="#ffffff",
+            bd=0, highlightthickness=2, relief="flat",
+            command=self.open_settings_window,highlightbackground=self.CLR_BTN_BD, activebackground=self.CLR_BTN_BD, activeforeground="#ffffff",
+            padx=10, pady=5
+        )
 
         #################
         ##### Cells #####
@@ -106,7 +125,7 @@ class GameOfLifeGUI:
 
         self.cells_canvas = tk.Canvas(
             self.root,
-            background=self.CLR_BG,
+            bg=self.CLR_BG,
             highlightbackground=self.CLR_BG,
         )
         self.cells_canvas.pack(fill="both", expand=True)
@@ -116,7 +135,6 @@ class GameOfLifeGUI:
         self.cells_canvas.bind("<MouseWheel>", self.zoom)
  
         self.create_cells()
-        self.root.after(100, self.center_canvas)
 
         ######################
         ##### Statistics #####
@@ -132,6 +150,60 @@ class GameOfLifeGUI:
         self.growth_rate_lbl = tk.Label(self.stats_frame, text="Growth Rate: 0.0")
 
         self.config_btns()
+
+    def open_settings_window(self) -> None:
+        self.settings_window = tk.Toplevel(self.root, bg=self.CLR_BG)
+        self.settings_window.title("Settings")
+        self.settings_window.geometry("250x180")
+        self.settings_window.protocol("WM_DELETE_WINDOW", self.settings_window.destroy)
+
+        settings_btns_frame = tk.Frame(self.settings_window, bg=self.CLR_BG)
+        settings_btns_frame.pack()
+
+        info_lbl = tk.Label(settings_btns_frame, text="Enter width and heights as integers",
+                            bg=self.CLR_BG, fg="#ffffff")
+
+        cols_lbl = tk.Label(settings_btns_frame, text="Width", bg=self.CLR_BG, fg="#ffffff")
+        self.cols_entry = tk.Entry(settings_btns_frame)
+        self.cols_entry.insert(0, str(self.engine.cols))
+
+        rows_lbl = tk.Label(settings_btns_frame, text="Height", bg=self.CLR_BG, fg="#ffffff")
+        self.rows_entry = tk.Entry(settings_btns_frame)
+        self.rows_entry.insert(0, str(self.engine.rows))
+
+        cell_size_lbl = tk.Label(settings_btns_frame, text="Cell Size", bg=self.CLR_BG, fg="#ffffff")
+        self.cell_size_entry = tk.Entry(settings_btns_frame)
+        self.cell_size_entry.insert(0, str(self.cell_size))
+
+        save_settings_btn = tk.Button(
+            settings_btns_frame, text="Save", bg=self.CLR_CLK_BTN, fg="#ffffff",
+            bd=0, highlightthickness=2, relief="flat",
+            command=self.save_settings,highlightbackground=self.CLR_BTN_BD, activebackground=self.CLR_BTN_BD, activeforeground="#ffffff",
+            padx=10, pady=5
+        )
+
+        info_lbl.grid(row=0, padx=10, pady=5, columnspan=2)
+        cols_lbl.grid(row=1, column=0, padx=0, pady=5)
+        self.cols_entry.grid(row=1, column=1, padx=0, pady=5)
+        rows_lbl.grid(row=2, column=0, padx=0, pady=5)
+        self.rows_entry.grid(row=2, column=1, padx=0, pady=5)
+        cell_size_lbl.grid(row=3, column=0, padx=0, pady=5)
+        self.cell_size_entry.grid(row=3, column=1, padx=0, pady=5)
+        save_settings_btn.grid(row=4, column=0, padx=10, pady=5, columnspan=2)
+
+    def save_settings(self) -> None:
+        try:
+            cols = max(1, min(int(self.cols_entry.get()), 100)) # TODO make the max value modifiable
+            rows = max(1, min(int(self.rows_entry.get()), 100))
+            cell_size = max(1, min(int(self.cell_size_entry.get()), 100))
+        except ValueError:
+            logging.error("The entered values are incorrect.")
+            return
+
+        self.settings_window.destroy()
+        self.engine.change_dimensions(rows, cols)
+        self.cell_size = cell_size
+        self.create_cells()
 
     def center_canvas(self) -> None:
         bbox = self.cells_canvas.bbox('all')
@@ -170,13 +242,14 @@ class GameOfLifeGUI:
     def config_btns(self) -> None:
         logging.info("Configuring control buttons")
 
-        self.start_btn.grid       (row=0, column=0, padx=10, pady=5)
-        self.step_btn.grid        (row=0, column=1, padx=10, pady=5)
+        self.preset_opts_list.grid(row=0, column=0, padx=10, pady=5)
+        self.random_btn.grid      (row=0, column=1, padx=10, pady=5)
         self.clear_btn.grid       (row=0, column=2, padx=10, pady=5)
-        self.random_btn.grid      (row=0, column=3, padx=10, pady=5)
-        self.speed_slider.grid    (row=0, column=4, padx=10, pady=5)
-        self.preset_opts_list.grid(row=0, column=5, padx=10, pady=5)
+        self.start_btn.grid       (row=0, column=3, padx=10, pady=5)
+        self.step_btn.grid        (row=0, column=4, padx=10, pady=5)
+        self.speed_slider.grid    (row=0, column=5, padx=10, pady=5)
         self.export_gif_btn.grid  (row=0, column=6, padx=10, pady=5)
+        self.open_settings_btn.grid(row=0, column=7, padx=10, pady=5)
 
         self.pop_stat_lbl.grid    (row=0, column=0, padx=10, pady=10)
         self.gen_stat_lbl.grid    (row=0, column=1, padx=10, pady=10)
@@ -184,7 +257,8 @@ class GameOfLifeGUI:
         self.growth_rate_lbl.grid (row=0, column=3, padx=10, pady=10)
 
     def create_cells(self) -> None:
-        #self.cells_canvas.delete("all")
+        self.cells_canvas.delete("all")
+        
         for r in range(self.engine.rows):
             for c in range(self.engine.cols):
                 x1, y1 = c *  self.cell_size, r *  self.cell_size
@@ -195,7 +269,9 @@ class GameOfLifeGUI:
                     rect, "<ButtonRelease-1>", lambda event, r=r, c=c:
                     self.on_cell_click(r, c) if not self.is_dragging else None
                 )
+
         self.cells_canvas.configure(scrollregion=self.cells_canvas.bbox("all"))
+        self.root.after(100, self.center_canvas)
     
     def start(self) -> None:
         logging.info("Starting the game")

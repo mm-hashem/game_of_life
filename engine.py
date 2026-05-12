@@ -5,14 +5,20 @@ class GameOfLife:
     def __init__(self, rows: int = 50, cols: int = 50):
         self.rows = rows
         self.cols = cols
-        self.center = (round(rows / 2), round(cols / 2))
-        self.grid = np.zeros((rows, cols), dtype=bool)
+        self.center = None
+        self.grid = None
         self.population = 0
         self.population_prev = 0
         self.gen         = 0
         self.density     = 0.0
         self.growth_rate = 0.0
-    
+
+        self.create_grid()
+
+    def create_grid(self) -> None:
+        self.center = (round(self.rows / 2), round(self.cols / 2))
+        self.grid = np.zeros((self.rows, self.cols), dtype=bool)
+
     def load_preset(self, coords: list) -> None:
         self.clear()
         for r, c in coords:
@@ -60,6 +66,11 @@ class GameOfLife:
     def toggle(self, r: int, c: int) -> None:
         self.grid[r, c] = not self.grid[r, c]
         self.update_population()
+
+    def change_dimensions(self, rows: int, cols: int) -> None:
+        self.rows = rows
+        self.cols = cols
+        self.create_grid()
 
     def clear(self) -> None:
         self.grid.fill(False)

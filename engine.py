@@ -2,16 +2,40 @@ import numpy as np
 
 class GameOfLife:
 
+    neighbor_coords = {
+        "Moore": [
+            (-1, -1), (-1, 0), (-1, 1),
+            (0, -1),           (0, 1),
+            (1, -1),  (1, 0),  (1, 1)
+        ],
+        "Von Neumann": [
+                 (-1, 0),
+        (0, -1),          (0, 1),
+                 (1, 0)
+        ]
+    }
+
     def __init__(self, rows: int = 50, cols: int = 50):
+
+        # Cells grid
+        self.grid = None
+        
+        # Dimensions
         self.rows = rows
         self.cols = cols
         self.center = None
-        self.grid = None
+
+        # Stats
         self.population = 0
         self.population_prev = 0
         self.gen         = 0
         self.density     = 0.0
         self.growth_rate = 0.0
+
+        # Game rules
+        self.neighborhood = "Moore"
+        self.birth = {3}
+        self.survive = {2, 3}
 
         self.create_grid()
 
@@ -37,11 +61,18 @@ class GameOfLife:
 
     def next_state(self, r: int, c: int) -> bool:
         current_cell = self.grid[r, c]
-        neighbors = self.grid[max(0, r-1):r+2, max(0, c-1):c+2]
-        neighbors_count = np.sum(neighbors) - current_cell
-        if current_cell:
-            return 2 <= neighbors_count <= 3
-        return neighbors_count == 3
+
+        neighbors_count = 0
+        for dr, dc in self.neighbor_coords[self.neighborhood]:
+            nr, nc = r + dr, c + dc
+        
+            if 0 <= nr < self.rows and 0 <= nc < self.cols:
+                if self.grid[nr, nc]:
+                    neighbors_count += 1
+
+        if current_cell: # Survive
+            return neighbors_count in self.survive
+        return neighbors_count in self.birth # Birth
     
     def random(self) -> None:
         self.clear()
@@ -62,6 +93,11 @@ class GameOfLife:
         self.population = np.count_nonzero(self.grid)
         self.update_density()
         self.update_growth_rate()
+    
+    def update_rules(self, neighborhood: str, birth: set, survive: set) -> None:
+        self.neighborhood = neighborhood
+        self.birth = birth
+        self.survive = survive
     
     def toggle(self, r: int, c: int) -> None:
         self.grid[r, c] = not self.grid[r, c]

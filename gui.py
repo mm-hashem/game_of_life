@@ -1,9 +1,15 @@
 import tkinter as tk
 from tkinter import filedialog
-from PIL import ImageGrab
 import logging
 from engine import GameOfLife
 from rle_manager import RLEManager
+from settings_window import SettingsWindow
+
+try:
+    from PIL import ImageGrab
+    HAS_PIL = True
+except ImportError:
+    HAS_PIL = False
 
 class GameOfLifeGUI:
 
@@ -12,9 +18,45 @@ class GameOfLifeGUI:
     CLR_DEAD_CELL = "#A3A3A1"
     CLR_ALIVE_CELL = "#ffff00"
     CLR_CELL_BORDER = ""
-    CLR_CLK_BTN = "#456882"
-    CLR_GREYED_BTN = "#D2C1B6"
+    CLR_CLK_BTN = "#456882" # Clickable button color
+    CLR_GREYED_BTN = "#D2C1B6" # Greyed-out button color
     CLR_BTN_BD = "#234C6A" # Button border
+    CLR_TEXT = "#ffffff" # Text color
+
+    STYLE_GREYED_BTN = {
+        "bg": CLR_GREYED_BTN,
+        "fg": CLR_TEXT,
+        "bd": 0,
+        "highlightthickness": 2,
+        "relief": "flat",
+        "highlightbackground": CLR_BTN_BD,
+        "activebackground": CLR_BTN_BD,
+        "activeforeground": CLR_TEXT,
+        "padx": 8,
+        "font": ("Segoe UI", 11)
+    }
+
+    STYLE_CLK_BTN = {
+        **STYLE_GREYED_BTN,
+        "bg": CLR_CLK_BTN
+    }
+
+    STYLE_SLIDER = {
+        "bg": CLR_BG,
+        "fg": CLR_TEXT,
+        "bg":CLR_BG,
+        "highlightbackground": CLR_BG,
+        "relief": "flat",
+        "sliderrelief": "flat",
+        "troughcolor": CLR_CLK_BTN
+    }
+
+    STYLE_LABEL = {
+        "bg": CLR_CLK_BTN,
+        "fg": CLR_TEXT,
+        "highlightthickness": 2,
+        "highlightbackground": CLR_BTN_BD
+    }
 
     def __init__(
             self, root: tk.Tk, engine: GameOfLife, rle_manager: RLEManager,
@@ -28,7 +70,7 @@ class GameOfLifeGUI:
         self.speed = speed
         self.frames = []
 
-        self.root.geometry('750x700')
+        self.root.geometry('850x700')
         self.root.title("Conway's Game of Life")
 
         # Game state        
@@ -36,12 +78,7 @@ class GameOfLifeGUI:
         self.running  = False
         self.dragging = False
 
-        # Settings window
-        self.settings_window = None
-        self.cols_entry = None
-        self.rows_entry = None
-        self.cell_size_entry = None
-
+        self.slider_val_prev = 1
         self.slider_var = tk.IntVar(value=1)
 
         self.root.config(bg=self.CLR_BG)
@@ -54,79 +91,69 @@ class GameOfLifeGUI:
         self.ctrl_frame.pack()
 
         self.start_btn = tk.Button(
-            self.ctrl_frame, text="Start", bg=self.CLR_GREYED_BTN, fg="#ffffff",
-            bd=0, highlightthickness=2, relief="flat", state=tk.DISABLED,
-            command=self.start,highlightbackground=self.CLR_BTN_BD, activebackground=self.CLR_BTN_BD, activeforeground="#ffffff",
-            font=("Segoe UI", 13), padx=3, pady=3
+            self.ctrl_frame, text="Start",
+            **(self.STYLE_GREYED_BTN | {"padx": 15, "font": ("Segoe UI", 14)}),
+            state=tk.DISABLED, command=self.start
         )
 
         self.step_btn = tk.Button(
-            self.ctrl_frame, text="Step", bg=self.CLR_GREYED_BTN, fg="#ffffff",
-            bd=0, highlightthickness=2, relief="flat", state=tk.DISABLED,
-            command=self.step_gui,highlightbackground=self.CLR_BTN_BD, activebackground=self.CLR_BTN_BD, activeforeground="#ffffff",
-            padx=10, pady=5
+            self.ctrl_frame, text="Step", **self.STYLE_GREYED_BTN,
+            state=tk.DISABLED, command=self.step_gui
         )
         
         self.clear_btn = tk.Button(
-            self.ctrl_frame, text="Clear", bg=self.CLR_GREYED_BTN, fg="#ffffff",
-            bd=0, highlightthickness=2, relief="flat", state=tk.DISABLED,
-            command=self.clear_gui,highlightbackground=self.CLR_BTN_BD, activebackground=self.CLR_BTN_BD, activeforeground="#ffffff",
-            padx=10, pady=5
+            self.ctrl_frame, text="Clear", **self.STYLE_GREYED_BTN,
+            state=tk.DISABLED, command=self.clear_gui
         )
 
         self.random_btn = tk.Button(
-            self.ctrl_frame, text="Random", bg=self.CLR_CLK_BTN, fg="#ffffff",
-            bd=0, highlightthickness=2, relief="flat",
-            command=self.random,highlightbackground=self.CLR_BTN_BD, activebackground=self.CLR_BTN_BD, activeforeground="#ffffff",
-            padx=10, pady=5
+            self.ctrl_frame, text="Random", **self.STYLE_CLK_BTN,
+            command=self.random
         )
 
         self.speed_slider = tk.Scale(
-            self.ctrl_frame, from_=-10, to=10, orient="horizontal", label="1 gen/sec",
-            variable=self.slider_var, showvalue=0, command=self.speed_control,
-            bg=self.CLR_BG, highlightbackground=self.CLR_BG, fg="#ffffff",
-            relief="flat", sliderrelief="flat", troughcolor=self.CLR_CLK_BTN
+            self.ctrl_frame, **self.STYLE_SLIDER, orient="horizontal",
+            from_=-10, to=10, label="1 gen/sec", variable=self.slider_var,
+            resolution=1, showvalue=0, command=lambda _:self.speed_control()
         )
         self.speed_slider.set(1)
 
-        self.presets_opts = tk.StringVar(value="Select preset")
+        self.presets_opts = tk.StringVar(value="Select pattern")
         self.preset_opts_list = tk.OptionMenu(
             self.ctrl_frame, self.presets_opts,
-            *self.rle_manager.available_patterns, command=self.select_preset
+            *self.rle_manager.available_patterns,
+            command=self.select_preset
         )
-        self.preset_opts_list.config(
-            relief="flat", bg=self.CLR_CLK_BTN, fg="#ffffff", bd=0,
-            highlightthickness=2, highlightbackground=self.CLR_BTN_BD,
-            activebackground=self.CLR_BTN_BD, activeforeground="#ffffff"
-        )
+        self.preset_opts_list.config(**self.STYLE_CLK_BTN)
         self.preset_opts_list["menu"].config(
-            bg=self.CLR_BG, fg="#ffffff", bd=0, relief="flat" # TODO Remove border
+            bg=self.CLR_BG, fg=self.CLR_TEXT, bd=0, relief="flat"
         )
 
         self.export_gif_btn = tk.Button(
-            self.ctrl_frame, text="Export GIF", bg=self.CLR_CLK_BTN, fg="#ffffff",
-            bd=0, highlightthickness=2, relief="flat",
-            command=self.save_recording,highlightbackground=self.CLR_BTN_BD, activebackground=self.CLR_BTN_BD, activeforeground="#ffffff",
-            padx=10, pady=5
+            self.ctrl_frame, text="Export GIF", **self.STYLE_CLK_BTN,
+            command=self.save_recording
         )
 
+        if not HAS_PIL:
+            self.export_gif_btn.config(
+                state=tk.DISABLED, 
+                **self.STYLE_GREYED_BTN
+            )
+
         self.open_settings_btn = tk.Button(
-            self.ctrl_frame, text="Settings", bg=self.CLR_CLK_BTN, fg="#ffffff",
-            bd=0, highlightthickness=2, relief="flat",
-            command=self.open_settings_window,highlightbackground=self.CLR_BTN_BD, activebackground=self.CLR_BTN_BD, activeforeground="#ffffff",
-            padx=10, pady=5
+            self.ctrl_frame, text="Settings", **self.STYLE_CLK_BTN,
+            command=self.open_settings_window
         )
 
         #################
         ##### Cells #####
         #################
 
-        self.cell_buttons = [[None]*self.engine.cols for _ in range(self.engine.rows)]
+        self.cell_buttons = None
 
         self.cells_canvas = tk.Canvas(
-            self.root,
-            bg=self.CLR_BG,
-            highlightbackground=self.CLR_BG,
+            self.root, bg=self.CLR_BG,
+            highlightbackground=self.CLR_BG
         )
         self.cells_canvas.pack(fill="both", expand=True)
 
@@ -140,107 +167,19 @@ class GameOfLifeGUI:
         ##### Statistics #####
         ######################
 
-        self.stats_frame = tk.Frame(self.root, bg="#080616")
+        self.stats_frame = tk.Frame(self.root, bg=self.CLR_BG)
         self.stats_frame.pack()
 
         ##### Row 0
-        self.pop_stat_lbl = tk.Label(self.stats_frame, text="Population: 0")
-        self.gen_stat_lbl = tk.Label(self.stats_frame, text="Generation: 0")
-        self.density_stat_lbl = tk.Label(self.stats_frame, text="Density: 0.0")
-        self.growth_rate_lbl = tk.Label(self.stats_frame, text="Growth Rate: 0.0")
+        self.pop_stat_lbl     = tk.Label(self.stats_frame, text="Population: 0",    **self.STYLE_LABEL)
+        self.gen_stat_lbl     = tk.Label(self.stats_frame, text="Generation: 0",    **self.STYLE_LABEL)
+        self.density_stat_lbl = tk.Label(self.stats_frame, text="Density: 0.0",     **self.STYLE_LABEL)
+        self.growth_rate_lbl  = tk.Label(self.stats_frame, text="Growth Rate: 0.0", **self.STYLE_LABEL)
 
-        self.config_btns()
-
-    def open_settings_window(self) -> None:
-        self.settings_window = tk.Toplevel(self.root, bg=self.CLR_BG)
-        self.settings_window.title("Settings")
-        self.settings_window.geometry("250x180")
-        self.settings_window.protocol("WM_DELETE_WINDOW", self.settings_window.destroy)
-
-        settings_btns_frame = tk.Frame(self.settings_window, bg=self.CLR_BG)
-        settings_btns_frame.pack()
-
-        info_lbl = tk.Label(settings_btns_frame, text="Enter width and heights as integers",
-                            bg=self.CLR_BG, fg="#ffffff")
-
-        cols_lbl = tk.Label(settings_btns_frame, text="Width", bg=self.CLR_BG, fg="#ffffff")
-        self.cols_entry = tk.Entry(settings_btns_frame)
-        self.cols_entry.insert(0, str(self.engine.cols))
-
-        rows_lbl = tk.Label(settings_btns_frame, text="Height", bg=self.CLR_BG, fg="#ffffff")
-        self.rows_entry = tk.Entry(settings_btns_frame)
-        self.rows_entry.insert(0, str(self.engine.rows))
-
-        cell_size_lbl = tk.Label(settings_btns_frame, text="Cell Size", bg=self.CLR_BG, fg="#ffffff")
-        self.cell_size_entry = tk.Entry(settings_btns_frame)
-        self.cell_size_entry.insert(0, str(self.cell_size))
-
-        save_settings_btn = tk.Button(
-            settings_btns_frame, text="Save", bg=self.CLR_CLK_BTN, fg="#ffffff",
-            bd=0, highlightthickness=2, relief="flat",
-            command=self.save_settings,highlightbackground=self.CLR_BTN_BD, activebackground=self.CLR_BTN_BD, activeforeground="#ffffff",
-            padx=10, pady=5
-        )
-
-        info_lbl.grid(row=0, padx=10, pady=5, columnspan=2)
-        cols_lbl.grid(row=1, column=0, padx=0, pady=5)
-        self.cols_entry.grid(row=1, column=1, padx=0, pady=5)
-        rows_lbl.grid(row=2, column=0, padx=0, pady=5)
-        self.rows_entry.grid(row=2, column=1, padx=0, pady=5)
-        cell_size_lbl.grid(row=3, column=0, padx=0, pady=5)
-        self.cell_size_entry.grid(row=3, column=1, padx=0, pady=5)
-        save_settings_btn.grid(row=4, column=0, padx=10, pady=5, columnspan=2)
-
-    def save_settings(self) -> None:
-        try:
-            cols = max(1, min(int(self.cols_entry.get()), 100)) # TODO make the max value modifiable
-            rows = max(1, min(int(self.rows_entry.get()), 100))
-            cell_size = max(1, min(int(self.cell_size_entry.get()), 100))
-        except ValueError:
-            logging.error("The entered values are incorrect.")
-            return
-
-        self.settings_window.destroy()
-        self.engine.change_dimensions(rows, cols)
-        self.cell_size = cell_size
-        self.create_cells()
-
-    def center_canvas(self) -> None:
-        bbox = self.cells_canvas.bbox('all')
-        if not bbox: return # Exit if canvas is empty
-
-        # Get canvas viewport size
-        cwidth = self.cells_canvas.winfo_width()
-        cheight = self.cells_canvas.winfo_height()
-
-        # Get the total scrollable dimensions from the bbox
-        scroll_left, scroll_top, scroll_right, scroll_bottom = bbox
-        scroll_width = scroll_right - scroll_left
-        scroll_height = scroll_bottom - scroll_top
-
-        # Calculate the center point of your content
-        center_x = (scroll_left + scroll_right) / 2
-        center_y = (scroll_top + scroll_bottom) / 2
-
-        # Calculate the top-left position
-        target_left = center_x - (cwidth / 2)
-        target_top = center_y - (cheight / 2)
-
-        # Convert to fractions (0.0 to 1.0) based on the scrollregion
-        fraction_x = max(0, min(1, (target_left - scroll_left) / scroll_width))
-        fraction_y = max(0, min(1, (target_top - scroll_top) / scroll_height))
-
-        # Move the view
-        self.cells_canvas.xview_moveto(fraction_x)
-        self.cells_canvas.yview_moveto(fraction_y)
-
-    def select_preset(self, selected_preset: str) -> None:
-        coords = self.rle_manager.get_pattern_coords(selected_preset)
-        self.engine.load_preset(coords)
-        self.refresh_gui()
-
-    def config_btns(self) -> None:
-        logging.info("Configuring control buttons")
+        ##############################
+        ##### Placing components #####
+        ##############################
+        logging.info("Placing the main window's components")
 
         self.preset_opts_list.grid(row=0, column=0, padx=10, pady=5)
         self.random_btn.grid      (row=0, column=1, padx=10, pady=5)
@@ -256,13 +195,68 @@ class GameOfLifeGUI:
         self.density_stat_lbl.grid(row=0, column=2, padx=10, pady=10)
         self.growth_rate_lbl.grid (row=0, column=3, padx=10, pady=10)
 
+    def open_settings_window(self) -> None:
+        SettingsWindow(
+            self.root, self.engine.rows, self.engine.cols, self.cell_size,
+            list(self.engine.neighbor_coords), self.engine.neighborhood,
+            self.engine.birth, self.engine.survive, self.apply_settings
+        )
+
+    def apply_settings(self, neighborhood: str, birth: set, survive: set, rows: int, cols: int, cell_size: int) -> None:
+        self.engine.change_dimensions(rows, cols)
+        self.engine.change_rules(birth, survive, neighborhood)
+        self.cell_size = cell_size
+        self.create_cells()
+
+    def center_canvas(self) -> None:
+        self.cells_canvas.update_idletasks()
+        bbox = self.cells_canvas.bbox("all")
+        if not bbox:
+            return
+
+        cwidth = self.cells_canvas.winfo_width()
+        cheight = self.cells_canvas.winfo_height()
+        left, top, right, bottom = bbox
+
+        grid_width = right - left
+        grid_height = bottom - top
+
+        if grid_width < cwidth:
+            offset_x = (cwidth - grid_width) / 2 - left
+        else:
+            offset_x = 0
+
+        if grid_height < cheight:
+            offset_y = (cheight - grid_height) / 2 - top
+        else:
+            offset_y = 0
+
+        if offset_x or offset_y:
+            self.cells_canvas.move("all", offset_x, offset_y)
+
+        self.cells_canvas.configure(scrollregion=self.cells_canvas.bbox("all"))
+
+        if grid_width > cwidth:
+            self.cells_canvas.xview_moveto((left + grid_width/2 - cwidth/2) / grid_width)
+        if grid_height > cheight:
+            self.cells_canvas.yview_moveto((top + grid_height/2 - cheight/2) / grid_height)
+
+    def select_preset(self, selected_preset: str) -> None:
+        coords, birth, survive = self.rle_manager.get_configs(selected_preset)
+        self.engine.load_preset(coords)
+        self.engine.change_rules(birth, survive)
+        self.refresh_gui()
+
     def create_cells(self) -> None:
         self.cells_canvas.delete("all")
-        
+        self.cell_buttons = [[None]*self.engine.cols for _ in range(self.engine.rows)]
+                
         for r in range(self.engine.rows):
             for c in range(self.engine.cols):
-                x1, y1 = c *  self.cell_size, r *  self.cell_size
-                x2, y2 = x1 + self.cell_size, y1 + self.cell_size
+                x1 = c  * self.cell_size
+                y1 = r  * self.cell_size
+                x2 = x1 + self.cell_size
+                y2 = y1 + self.cell_size
                 rect = self.cells_canvas.create_rectangle(x1, y1, x2, y2, fill=self.CLR_DEAD_CELL, outline="black")
                 self.cell_buttons[r][c] = rect # TODO REMOVE AND PASS R AND C
                 self.cells_canvas.tag_bind(
@@ -292,12 +286,12 @@ class GameOfLifeGUI:
     def loop(self) -> None:
         logging.info("Game loop")
         self.step_gui()
-        self.job_id = self.root.after(round(1000 * self.speed), self.loop)
         if not self.engine.has_live_cells():
             logging.info("No live cell")
             self.clear_gui()
         else:
             logging.info("There are live cells")
+        self.job_id = self.root.after(round(1000 * self.speed), self.loop)
 
     def on_cell_click(self, r: int, c: int) -> None:
         logging.info(f"A cell was clicked, r: {r}, c: {c}")
@@ -321,12 +315,25 @@ class GameOfLifeGUI:
 
     ##### Generation Speed #####
 
-    def speed_control(self, slider_val) -> None:
-        slider_val_int = int(slider_val)
-        if   (slider_val_int  < 0): self.speed = abs(slider_val_int)
-        elif (slider_val_int >= 1): self.speed = 1 / slider_val_int
+    def speed_control(self) -> None:
+        slider_val = self.slider_var.get()
 
-        self.refresh_gui()
+        if self.slider_val_prev == 1 and slider_val in (-1, 0):
+            self.speed_slider.set(-2)
+        elif self.slider_val_prev == -2 and slider_val in (-1, 0):
+            self.speed_slider.set(1)
+        
+        slider_val = self.slider_var.get()
+
+        if   (slider_val  < 0): self.speed = abs(slider_val)
+        elif (slider_val >= 1): self.speed = 1 / slider_val
+
+        if self.job_id is not None and self.running:
+            self.root.after_cancel(self.job_id)
+            self.job_id = self.root.after(round(1000 * self.speed), self.loop)
+
+        self.slider_val_prev = slider_val
+        self.refresh_slider()
 
     ##### Cells Pan and Zoom #####
 
@@ -357,8 +364,8 @@ class GameOfLifeGUI:
     def refresh_stats(self) -> None:
         self.pop_stat_lbl.config    (text=f"Population: {self.engine.population}")
         self.gen_stat_lbl.config    (text=f"Generation: {self.engine.gen}")
-        self.density_stat_lbl.config(text=f"Density: {self.engine.density}")
-        self.growth_rate_lbl.config (text=f"Growth Rate: {self.engine.growth_rate}")
+        self.density_stat_lbl.config(text=f"Density: {round(self.engine.density, 2)}")
+        self.growth_rate_lbl.config (text=f"Growth Rate: {round(self.engine.growth_rate, 2)}")
 
     def refresh_cells(self) -> None: # TODO optimize
         for r in range(self.engine.rows):
@@ -366,17 +373,15 @@ class GameOfLifeGUI:
                 color = self.CLR_ALIVE_CELL if self.engine.grid[r, c] else self.CLR_DEAD_CELL
                 self.cells_canvas.itemconfig(self.cell_buttons[r][c], fill=color)
 
-        #self.root.update()
-        #self.get_coordinates() #TODO export canvas only with stats
-
-    def refresh_buttons(self, clear: bool) -> None:
-        next_text = "Stop" if self.running else "Start"
-        self.start_btn.config(text=next_text)
-
+    def refresh_slider(self) -> None:
         if self.slider_var.get() >= 1:
             self.speed_slider.config(label=f"{self.slider_var.get()} gen/sec")
         else:
             self.speed_slider.config(label=f"{abs(self.slider_var.get())} sec/gen")
+
+    def refresh_buttons(self, clear: bool) -> None:
+        next_text = "Stop" if self.running else "Start"
+        self.start_btn.config(text=next_text)
 
         if self.engine.has_live_cells():
             self.start_btn.config(bg=self.CLR_CLK_BTN, state=tk.NORMAL)
@@ -388,15 +393,19 @@ class GameOfLifeGUI:
             self.clear_btn.config(bg=self.CLR_GREYED_BTN, state=tk.DISABLED)
             self.step_btn.config (bg=self.CLR_GREYED_BTN, state=tk.DISABLED)
 
-        if clear: self.presets_opts.set("Select preset")
+        if clear: self.presets_opts.set("Select pattern")
 
     def refresh_gui(self, clear: bool = False) -> None:
         logging.info("Refreshing the GUI")
-        logging.debug(f"Running: {self.running}")
+        #logging.debug(f"Running: {self.running}")
 
         self.refresh_buttons(clear)
+        self.refresh_slider()
         self.refresh_cells()
         self.refresh_stats()
+
+        #self.root.update()
+        #self.get_coordinates()
 
     ##### Saving to GIF #####
 

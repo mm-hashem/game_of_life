@@ -12,12 +12,6 @@ class RLEManager:
         self.folder_path = folder_path
         self.available_patterns = []
 
-        # TODO REMOVE?
-        self.rows = 0
-        self.cols = 0
-        self.births = 0
-        self.survs = 0
-
         self.refresh_pattern_list()
 
     def refresh_pattern_list(self) -> None:
@@ -30,31 +24,29 @@ class RLEManager:
         # Get patterns names
         self.available_patterns = [f.stem for f in path.glob("*.rle")]
 
-    def get_pattern_coords(self, name: str) -> list:
-        """Loads the actual coordinates only when requested."""
+    def load_file(self, filename: str) -> str:
+        if filename not in self.available_patterns:
+            logging.error("This pattern doesn't exist.")
+            return None
+        
         try:
-            filepath = Path(self.folder_path) / f"{name}.rle"
-        except:
-            logging.error(f"Couldn't locate file {name}")
-        return self.parse_rle(filepath)
-
-    @staticmethod
-    def load_file(filepath: Path) -> str:
-        try:
+            filepath = Path(self.folder_path) / f"{filename}.rle"
             rle_text = Path(filepath).read_text(encoding="utf-8")
             return rle_text
         except:
             logging.error(f"Couldn't read file {filepath}")
             return None
-
-    def parse_rle(self, filepath) -> list:
+        
+    def parse_rle(self, pattern_name) -> list[str, tuple[int, int], int, int]:
         """Parses an RLE file and returns a list of (x, y) tuples."""
-        file = self.load_file(filepath)
+
+        file = self.load_file(pattern_name)
         if file is None:
             logging.error("The read file is empty")
-            return []
+            return ""
+        
         file_iter = iter(file.splitlines())
-        coords = []
+        
         pattern = ""
         # Getting the pattern dimensions
         for line in file_iter:
@@ -66,21 +58,38 @@ class RLEManager:
                     logging.error("Invalid RLE header")
                     return
                 
-                self.cols   = max(1, min(int(match.group(1)), 100))
-                self.rows   = max(1, min(int(match.group(2)), 100))
-                self.births = max(1, min(int(match.group(3)), 100))
-                self.survs  = max(1, min(int(match.group(4)), 100))
-                break   
+                cols    = max(1, min(int(match.group(1)), 100))
+                rows    = max(1, min(int(match.group(2)), 100))
+                birth   = {int(char) for char in match.group(3)}
+                survive = {int(char) for char in match.group(4)}
+
+                break
+
+        # Defaulting to Moore (8 neighbors)
+        if len(birth) > 8 + 1 and all(x > 8 for x in birth):
+            logging.error("Invalid birth rule")
+            return
+
+        if len(survive) > 8 + 1 and all(x > 8 for x in survive):
+            logging.error("Invalid survive rule")
+            return
+            
+        center = (round(rows / 2), round(cols / 2))
 
         # Merge all items into one string
         for line in file_iter:
             if line.strip()[0] == "#": continue
             else:
                 pattern += line.strip()
-        
-        pattern_list = pattern[:-1].split("$")
 
-        r = 0; c = 0
+        return [pattern, center, birth, survive]
+
+    def calcuate_coords(self, pattern_str: str, center: tuple[int, int]) -> list[tuple[int, int]]:
+        pattern_list = pattern_str[:-1].split("$")
+        
+        r = -center[0]; c = -center[1]
+
+        coords = []
 
         for row in pattern_list:
             matches = re.finditer(self.item_re, row)
@@ -104,9 +113,13 @@ class RLEManager:
                         c += int(matched[:-1])
                     else: c += 1
                 elif matched.isdigit() and len(matched) == 1:
-                    print(matched)
                     r += int(matched) - 1
             r += 1
-            c = 0
+            c = -center[1]
 
         return coords
+    
+    def get_configs(self, pattern_name: str) -> list:
+        pattern_str, center, birth, survive = self.parse_rle(pattern_name)
+        coords = self.calcuate_coords(pattern_str, center)
+        return [coords, birth, survive]

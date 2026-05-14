@@ -23,7 +23,6 @@ class GameOfLife:
         # Dimensions
         self.rows = rows
         self.cols = cols
-        self.center = None
 
         # Stats
         self.population = 0
@@ -40,13 +39,14 @@ class GameOfLife:
         self.create_grid()
 
     def create_grid(self) -> None:
-        self.center = (round(self.rows / 2), round(self.cols / 2))
         self.grid = np.zeros((self.rows, self.cols), dtype=bool)
 
     def load_preset(self, coords: list) -> None:
         self.clear()
+
+        center = (round(self.rows / 2), round(self.cols / 2))
         for r, c in coords:
-            self.grid[r + self.center[0], c + self.center[1]] = True
+            self.grid[r + center[0], c + center[1]] = True
         self.update_population()
 
     def step(self) -> None:
@@ -94,9 +94,10 @@ class GameOfLife:
         self.update_density()
         self.update_growth_rate()
     
-    def update_rules(self, neighborhood: str, birth: set, survive: set) -> None:
-        self.neighborhood = neighborhood
-        self.birth = birth
+    def change_rules(self, birth: set, survive: set, neighborhood: str | None = None) -> None:
+        if neighborhood is not None:
+            self.neighborhood = neighborhood
+        self.birth   = birth
         self.survive = survive
     
     def toggle(self, r: int, c: int) -> None:

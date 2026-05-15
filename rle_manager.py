@@ -1,21 +1,33 @@
 import re
 import logging
 from pathlib import Path
+from typing import List, Tuple, Set, Optional
 
 class RLEManager:
+    """Manages RLE (Run-Length Encoded) patterns for Life-like games.
+
+    This class provides functionality to load, parse, and convert RLE files
+    containing patterns into coordinate lists.
+    """
 
     header_re = r"\s*x\s*=\s*(\d+)\s*,\s*y\s*=\s*(\d+),\s*rule\s*=\s*B(\d+)\/S(\d*)"
     item_re   = r"\d*[bo]?"
 
     # TODO add check for max rows and cols of the result coordinates
     def __init__(self, folder_path: str = "patterns"):
+        """Initializes the RLEManager with a folder path for patterns.
+
+        Args:
+            folder_path: Path to the directory containing .rle files.
+                Defaults to "patterns".
+        """
         self.folder_path = folder_path
         self.available_patterns = []
 
         self.refresh_pattern_list()
 
     def refresh_pattern_list(self) -> None:
-        """Scans the folder for .rle files."""
+        """Scans the folder for .rle files and updates the available patterns list."""
         path = Path(self.folder_path)
         if not path.exists() or not path.is_dir():
             logging.error("The patterns folder doesn't exist") # 
@@ -24,7 +36,15 @@ class RLEManager:
         # Get patterns names
         self.available_patterns = [f.stem for f in path.glob("*.rle")]
 
-    def load_file(self, filename: str) -> str:
+    def load_file(self, filename: str) -> Optional[str]:
+        """Loads the content of an RLE file.
+
+        Args:
+            filename: Name of the pattern file without extension.
+
+        Returns:
+            The content of the file as a string, or None if loading fails.
+        """
         if filename not in self.available_patterns:
             logging.error("This pattern doesn't exist.")
             return None
@@ -37,13 +57,28 @@ class RLEManager:
             logging.error(f"Couldn't read file {filepath}")
             return None
         
-    def parse_rle(self, pattern_name) -> list[str, tuple[int, int], int, int]:
-        """Parses an RLE file and returns a list of (x, y) tuples."""
+    def parse_rle(self, pattern_name: str) -> Optional[Tuple[str, Tuple[int, int], Set[int], Set[int]]]:
+        """Parses an RLE file and extracts pattern data.
+
+        Uses iteration to read through the file lines, extract the header
+        information, and concatenate the pattern lines into a single string.
+
+        Args:
+            pattern_name: Name of the pattern to parse.
+
+        Returns:
+            A tuple containing:
+            - pattern_str: The encoded pattern string.
+            - center: Center coordinates as (row, col).
+            - birth: Set of birth rule numbers.
+            - survive: Set of survive rule numbers.
+            Or None if parsing fails.
+        """
 
         file = self.load_file(pattern_name)
         if file is None:
             logging.error("The read file is empty")
-            return ""
+            return None
         
         file_iter = iter(file.splitlines())
         
@@ -56,10 +91,10 @@ class RLEManager:
                 match = re.search(self.header_re, line.strip())
                 if match is None:
                     logging.error("Invalid RLE header")
-                    return
+                    return None
                 
-                cols    = max(1, min(int(match.group(1)), 100))
-                rows    = max(1, min(int(match.group(2)), 100))
+                cols    = max(1, int(match.group(1)))
+                rows    = max(1, int(match.group(2)))
                 birth   = {int(char) for char in match.group(3)}
                 survive = {int(char) for char in match.group(4)}
 
@@ -68,11 +103,11 @@ class RLEManager:
         # Defaulting to Moore (8 neighbors)
         if len(birth) > 8 + 1 and all(x > 8 for x in birth):
             logging.error("Invalid birth rule")
-            return
+            return None
 
         if len(survive) > 8 + 1 and all(x > 8 for x in survive):
             logging.error("Invalid survive rule")
-            return
+            return None
             
         center = (round(rows / 2), round(cols / 2))
 
@@ -82,9 +117,18 @@ class RLEManager:
             else:
                 pattern += line.strip()
 
-        return [pattern, center, birth, survive]
+        return (pattern, center, birth, survive)
 
-    def calcuate_coords(self, pattern_str: str, center: tuple[int, int]) -> list[tuple[int, int]]:
+    def calculate_coords(self, pattern_str: str, center: Tuple[int, int]) -> List[Tuple[int, int]]:
+        """Calculates coordinates from RLE pattern string.
+
+        Args:
+            pattern_str: The RLE encoded pattern string.
+            center: Center coordinates as (row, col).
+
+        Returns:
+            List of (row, col) tuples representing live cells.
+        """
         pattern_list = pattern_str[:-1].split("$")
         
         r = -center[0]; c = -center[1]
@@ -119,7 +163,22 @@ class RLEManager:
 
         return coords
     
-    def get_configs(self, pattern_name: str) -> list:
-        pattern_str, center, birth, survive = self.parse_rle(pattern_name)
-        coords = self.calcuate_coords(pattern_str, center)
-        return [coords, birth, survive]
+    def get_configs(self, pattern_name: str) -> Optional[Tuple[List[Tuple[int, int]], Set[int], Set[int]]]:
+        """Gets configuration data for a pattern.
+
+        Args:
+            pattern_name: Name of the pattern.
+
+        Returns:
+            A tuple containing:
+            - coords: List of (row, col) coordinates.
+            - birth: Set of birth rule numbers.
+            - survive: Set of survive rule numbers.
+            Or None if parsing fails.
+        """
+        parsed = self.parse_rle(pattern_name)
+        if parsed is None:
+            return None
+        pattern_str, center, birth, survive = parsed
+        coords = self.calculate_coords(pattern_str, center)
+        return (coords, birth, survive)

@@ -1,25 +1,31 @@
+"""
+GameOfLife class, which implements the logic for Conway's Game of Life and Life-like cellular automata.
+
+The GameOfLife class manages the grid, applies the rules of the game, and tracks statistics such as population and growth rate.
+The class provides methods for loading preset patterns, randomizing the grid, toggling cell states, and changing game rules and dimensions.
+"""
+
 import numpy as np
+import random
 import logging
+import hashlib
 
 class GameOfLife:
 
     neighbor_coords = {
         "Moore": [
             (-1, -1), (-1, 0), (-1, 1),
-            (0, -1),           (0, 1),
-            (1, -1),  (1, 0),  (1, 1)
+            ( 0, -1),          ( 0, 1),
+            ( 1, -1), ( 1, 0), ( 1, 1)
         ],
         "Von Neumann": [
                  (-1, 0),
         (0, -1),          (0, 1),
-                 (1, 0)
+                 ( 1, 0)
         ]
     }
 
-    DEFAULT_ROWS = 50
-    DEFAULT_COLS = 50
-
-    def __init__(self, rows: int = 50, cols: int = 50):
+    def __init__(self, rows: int, cols: int) -> None:
         """
         Initializes the GameOfLife instance with specified grid dimensions.
 
@@ -39,7 +45,7 @@ class GameOfLife:
         self.cols = cols
 
         # Stats
-        self.population = 0
+        self.population      = 0
         self.population_prev = 0
         self.gen         = 0
         self.density     = 0.0
@@ -50,17 +56,20 @@ class GameOfLife:
         self.birth = {3}
         self.survive = {2, 3}
 
+        # Randomness settings
+        self.rand_density = 0.5
+        self.seed = random.randint(0, 2**32 - 1)
+        self.rng  = np.random.default_rng(self.seed)
+        self.seed_set = False # Flag that seed was set, to prevent reseeding on every randomization
+
         try:
             self.create_grid()
-            logging.log("Grid created successfully")
+            logging.info("Grid created successfully")
         except ValueError as e:
-            logging.error(f"Failed to create grid, using default dimensions 50x50: {e}")
-            self.rows = self.DEFAULT_ROWS
-            self.cols = self.DEFAULT_COLS
+            logging.critical(f"Failed to create grid, invalid dimensions: {e}")
             self.create_grid()
         except Exception as e:
             logging.fatal(f"An unexpected error occurred: {e}")
-            
 
     def create_grid(self) -> None:
         """
@@ -135,12 +144,59 @@ class GameOfLife:
             return neighbors_count in self.survive
         return neighbors_count in self.birth # Birth
     
+    def set_rand_density(self, density: float) -> None:
+        """
+        Sets the density for randomization.
+
+        Args:
+            density: A float value between 0.0 and 1.0 representing the desired density of live cells.
+
+        Raises:
+            ValueError: If the provided density is out of bounds.
+        """
+        if density < 0.0 or density > 1.0:
+            raise ValueError(f"Density must be between 0.0 and 1.0, Received density: {density}")
+        self.rand_density = density
+
+
+    def set_seed(self, seed: int | str | None = None, seed_set: bool = False) -> None:
+        """
+        Sets the seed for randomization.
+
+        Args:
+            seed: A value for the random number generator. If None, a new random seed will be used.
+            seed_set: A boolean flag indicating whether the seed was explicitly set, to prevent reseeding on every randomization.
+        """
+        
+        if seed_set or self.seed_set:
+            self.seed = seed
+            self.seed_set = True
+            if isinstance(seed, str):
+                numeric_seed = int(hashlib.md5(seed.encode()).hexdigest(), 16) % 2**32
+            else:
+                numeric_seed = seed
+            self.rng = np.random.default_rng(numeric_seed)
+        else:
+            self.seed = random.randint(0, 2**32 - 1)
+            self.rng  = np.random.default_rng(self.seed)
+    
     def random(self) -> None:
         """
         Randomizes the grid with live cells.
         """
+
         self.clear()
-        self._grid = np.random.randint(0, 2, size=self._grid.shape, dtype=bool)
+
+        if self.seed_set:
+            self.set_seed(self.seed, seed_set=True)
+        else:
+            self.set_seed()
+
+        self._grid = self.rng.choice(
+            [True, False], size=self._grid.shape,
+            p=[self.rand_density, 1 - self.rand_density]
+        )
+
         self.update_population()
     
     def has_live_cells(self) -> bool:
@@ -185,7 +241,7 @@ class GameOfLife:
         if neighborhood is not None and neighborhood in self.neighbor_coords:
             self.neighborhood = neighborhood
         else:
-            logging.warning(f"Invalid neighborhood type: {neighborhood}, keeping the current one: {self.neighborhood}")
+            logging.info(f"Neighborhood type was not provided, keeping the current one: {self.neighborhood}")
         
         self.birth   = birth
         self.survive = survive

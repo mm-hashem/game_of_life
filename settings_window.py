@@ -71,7 +71,8 @@ class SettingsWindow:
     def __init__(
             self, root: tk.Tk, rows: int, cols: int, cell_size: int,
             neighborhoods: list[str], current_neighborhood: str,
-            birth: set, survive: set, on_save_callback: function
+            birth: set, survive: set, rand_density: float, seed: int | str,
+            on_save_callback: function
         ):
         """
         Initializes the settings window with the provided parameters.
@@ -96,12 +97,14 @@ class SettingsWindow:
         self.birth = birth
         self.survive = survive
         self.cell_size = cell_size
+        self.rand_density = rand_density
+        self.seed = seed
         self.callback = on_save_callback
 
         ##### Creating the window
         self.settings_window = tk.Toplevel(self.root, bg=self.CLR_BG)
         self.settings_window.title("Settings")
-        self.settings_window.geometry("400x220")
+        self.settings_window.geometry("400x350")
         self.settings_window.protocol("WM_DELETE_WINDOW", self.settings_window.destroy)
 
         ##### Creating the buttons frame
@@ -220,6 +223,31 @@ class SettingsWindow:
         )
         self.cell_size_entry.insert(0, str(self.cell_size))
 
+        ##### Randomness Settings #####
+
+        self.rand_settings_lbl = tk.Label(
+            self.settings_btns_frame, text="Randomness Settings",
+            **self.STYLE_LABEL
+        )
+
+        self.rand_density_lbl = tk.Label(
+            self.settings_btns_frame, text="Density as %",
+            **self.STYLE_LABEL
+        )
+        self.rand_density_entry = tk.Entry(
+            self.settings_btns_frame, **self.STYLE_ENTRY
+        )
+        self.rand_density_entry.insert(0, str(self.rand_density * 100.0))
+
+        self.seed_lbl = tk.Label(
+            self.settings_btns_frame, text="Seed",
+            **self.STYLE_LABEL
+        )
+        self.seed_entry = tk.Entry(
+            self.settings_btns_frame, **self.STYLE_ENTRY
+        )
+        self.seed_entry.insert(0, "" if self.seed is None else str(self.seed))
+
         ##############################
         ##### Placing components #####
         ##############################
@@ -256,9 +284,21 @@ class SettingsWindow:
         self.cell_size_lbl.grid  (row=4, column=2, padx=5, pady=5, sticky="e")
         self.cell_size_entry.grid(row=4, column=3, padx=5, pady=5, sticky="w")
 
-        self.entry_error_lbl.grid(row=5, column=0, padx=10, pady=0, columnspan=4)
+        ##################
 
-        self.save_settings_btn.grid(row=6, column=0, padx=10, pady=5, columnspan=4)
+        self.rand_settings_lbl.grid(row=5, column=0, padx=5, pady=5, columnspan=2)
+
+        self.rand_density_lbl.grid  (row=6, column=0, padx=5, pady=5, sticky="e")
+        self.rand_density_entry.grid(row=6, column=1, padx=5, pady=5, sticky="w")
+
+        self.seed_lbl.grid  (row=7, column=0, padx=5, pady=5, sticky="e")
+        self.seed_entry.grid(row=7, column=1, padx=5, pady=5, sticky="w")
+
+        ##############
+
+        self.entry_error_lbl.grid(row=8, column=0, padx=10, pady=0, columnspan=4)
+
+        self.save_settings_btn.grid(row=9, column=0, padx=10, pady=5, columnspan=4)
     
     def send_settings_back(self):
         """
@@ -278,12 +318,19 @@ class SettingsWindow:
             cols = max(1, int(self.cols_entry.get()))
             rows = max(1, int(self.rows_entry.get()))
             cell_size = max(1, int(self.cell_size_entry.get()))
+            density = float(self.rand_density_entry.get()) / 100.0
+            # TODO move validation to the engine
+            seed_input = self.seed_entry.get()
+            if seed_input.isnumeric():
+                seed = int(seed_input)
+            else:
+                seed = None if seed_input == '' else seed_input
         except ValueError:
-            logging.error("The entered values are incorrect.")
+            logging.error("Invalid input values, cannot save settings")
             return
         
         self.settings_window.destroy()
-        self.callback(neighborhood, birth, survive, cols, rows, cell_size)
+        self.callback(neighborhood, birth, survive, cols, rows, cell_size, density, seed)
 
     def validate_rulestring(self, rulestring: str) -> bool:
         """

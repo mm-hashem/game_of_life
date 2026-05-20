@@ -1,3 +1,11 @@
+"""
+GameOfLifeGUI class, which implements the graphical user interface for Conway's Game of Life using Tkinter.
+
+The GameOfLifeGUI class provides a graphical interface to interact with the Game of Life,
+simulation, including controls for starting/stopping, stepping, clearing, randomizing, selecting presets, adjusting speed, exporting GIFs, and settings.
+The class manages the layout of the GUI components, handles user interactions, and updates the display based on the state of the game engine.
+"""
+
 import tkinter as tk
 from tkinter import filedialog
 import logging
@@ -98,24 +106,21 @@ class GameOfLifeGUI:
     }
 
     def __init__(
-            self, root: tk.Tk, engine: GameOfLife, rle_manager: RLEManager,
-            cell_size: int = 23, speed: int = 1
+            self, root: tk.Tk, engine: GameOfLife, rle_manager: RLEManager
         ):
         """Initializes the GameOfLifeGUI.
 
         Args:
-            root (tk.Tk): The root Tkinter window.
-            engine (GameOfLife): The game engine instance.
-            rle_manager (RLEManager): Manager for RLE patterns.
-            cell_size (int, optional): Size of each cell in pixels. Defaults to 23.
-            speed (int, optional): Initial speed of the simulation. Defaults to 1.
+            root: The root Tkinter window.
+            engine: The game engine instance.
+            rle_manager: Manager for RLE patterns.
         """
 
         self.engine = engine
         self.rle_manager = rle_manager
-        self.cell_size = cell_size
+        self.cell_size = 20
         self.root = root
-        self.speed = speed
+        self.speed = 1
         self.frames = []
         self.frames_durations = []
 
@@ -253,28 +258,42 @@ class GameOfLifeGUI:
         SettingsWindow(
             self.root, self.engine.rows, self.engine.cols, self.cell_size,
             list(self.engine.neighbor_coords), self.engine.neighborhood,
-            self.engine.birth, self.engine.survive, self.apply_settings
+            self.engine.birth, self.engine.survive, self.engine.rand_density,
+            self.engine.seed, self.apply_settings
         )
 
-    def apply_settings(self, neighborhood: str, birth: set[int], survive: set[int], rows: int, cols: int, cell_size: int) -> None:
+    def apply_settings(
+            self, neighborhood: str, birth: set[int], survive: set[int],
+            rows: int, cols: int, cell_size: int, density: float, seed: str | int | None
+        ) -> None:
         """Applies the settings from the settings window.
 
         Args:
-            neighborhood (str): The neighborhood type.
-            birth (set): Set of birth rules.
-            survive (set): Set of survival rules.
-            rows (int): Number of rows in the grid.
-            cols (int): Number of columns in the grid.
-            cell_size (int): Size of each cell in pixels.
+            neighborhood: The neighborhood type.
+            birth: Set of birth rules.
+            survive: Set of survival rules.
+            rows: Number of rows in the grid.
+            cols: Number of columns in the grid.
+            cell_size: Size of each cell in pixels.
+            density: Density for randomization.
+            seed: Seed for randomization.
         """
-        try:
-            self.engine.change_dimensions(rows, cols)
-        except ValueError as e:
-            logging.error(f"Failed to change grid dimensions: {e}")
         
         self.engine.change_rules(birth, survive, neighborhood)
+        try:
+            self.engine.set_rand_density(density)
+        except ValueError as e:
+            logging.error(f"Failed to set randomization density: {e}")
+        self.engine.set_seed(seed, seed_set=True)
         self.cell_size = cell_size
-        self.create_cells()
+        try:
+            if (rows      != self.engine.rows or
+                cols      != self.engine.cols or
+                cell_size != self.cell_size):
+                self.engine.change_dimensions(rows, cols)
+                self.create_cells()
+        except ValueError as e:
+            logging.error(f"Failed to change grid dimensions: {e}")
 
     def center_canvas(self) -> None:
         """Centers the canvas in the window.

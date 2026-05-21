@@ -7,6 +7,7 @@ game rules, grid dimensions, and cell size for the Conway's Game of Life simulat
 
 import tkinter as tk
 import logging
+from collections.abc import Callable
 
 class SettingsWindow:
     """
@@ -72,7 +73,7 @@ class SettingsWindow:
             self, root: tk.Tk, rows: int, cols: int, cell_size: int,
             neighborhoods: list[str], current_neighborhood: str,
             birth: set, survive: set, rand_density: float, seed: int | str,
-            on_save_callback: function
+            on_save_callback: Callable
         ):
         """
         Initializes the settings window with the provided parameters.

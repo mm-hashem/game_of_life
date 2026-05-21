@@ -1,4 +1,2 @@
 # Needed for the engine
 numpy==2.4.4
-# Only needed for exporting the gameplay as GIF
-pillow==12.2.0

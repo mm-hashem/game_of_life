@@ -13,7 +13,6 @@ Key capabilities:
 - Adjustable grid dimensions at runtime
 - Load and apply Golly `.rle` pattern files from the `patterns/` folder
 - Randomize the board, step generation-by-generation, or run continuously
-- Export the current simulation as a GIF when Pillow is installed
 
 ## Project Structure
 
@@ -41,7 +40,6 @@ Key capabilities:
 - Select preset patterns from `.rle` files
 - Open settings window to configure rules and grid size
 - Pan and zoom the board view
-- Export gameplay as a GIF (requires `Pillow`)
 
 ### Pattern Loading
 - Reads `.rle` files from the `patterns/` directory
@@ -51,17 +49,37 @@ Key capabilities:
 
 ## Installation
 
-1. Create and activate a Python environment.
-2. Install required packages:
-
+1. Install `Tkinter` if not already available (usually included with Python in Windows/macOS).
 ```bash
-python -m pip install -r requirements.txt
+# Debian/Ubuntu:
+sudo apt install python3-tk
+# Fedora:
+sudo dnf install python3-tkinter
+# CentOS / RHEL
+sudo yum install python3-tkinter
+# Arch Linux
+sudo pacman -S tk
 ```
 
-3. Run the application:
+Specify the version of Python you want to use if you have multiple versions installed, e.g. `python3.12` instead of `python3`.
+
+2. Verify if `Tkinter` is installed by running:
 
 ```bash
-python main.py
+python3 -m tkinter
+```
+
+3. Create and activate a Python environment.
+4. Install required packages:
+
+```bash
+python3 -m pip install -r requirements.txt
+```
+
+5. Run the application:
+
+```bash
+python3 main.py
 ```
 
 ## Usage
@@ -74,7 +92,6 @@ python main.py
 - `Select pattern`: Choose a pattern from the dropdown list to load a pattern from `patterns/`.
 - Speed slider: adjust simulation speed.
 - `Settings`: open settings window.
-- `Export GIF`: export the gameplay to a GIF.
 
 ### Settings
 - Neighborhood mode (`Moore` or `Von Neumann`)
@@ -82,10 +99,6 @@ python main.py
 - Survival rule (`S` digits)
 - Grid dimensions (`rows` and `columns`)
 - Cell display size
-
-### Exporting GIFs
-- If `Pillow` is installed, the `Export GIF` button will be available.
-- The export feature captures the current board state and saves it to disk as GIF.
 
 ## Design Notes
 
@@ -97,7 +110,6 @@ python main.py
 
 - Python 3.10+ recommended
 - `numpy` for simulation grid handling
-- `pillow` for GIF export support
 
 ## Defaults
 

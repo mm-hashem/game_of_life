@@ -2,22 +2,15 @@
 GameOfLifeGUI class, which implements the graphical user interface for Conway's Game of Life using Tkinter.
 
 The GameOfLifeGUI class provides a graphical interface to interact with the Game of Life,
-simulation, including controls for starting/stopping, stepping, clearing, randomizing, selecting presets, adjusting speed, exporting GIFs, and settings.
+simulation, including controls for starting/stopping, stepping, clearing, randomizing, selecting presets, adjusting speed, and settings.
 The class manages the layout of the GUI components, handles user interactions, and updates the display based on the state of the game engine.
 """
 
 import tkinter as tk
-from tkinter import filedialog
 import logging
 from engine import GameOfLife
 from rle_manager import RLEManager
 from settings_window import SettingsWindow
-
-try:
-    from PIL import ImageGrab, Image
-    HAS_PIL = True
-except ImportError:
-    HAS_PIL = False
 
 class GameOfLifeGUI:
 
@@ -25,8 +18,7 @@ class GameOfLifeGUI:
 
     This class provides a graphical interface to interact with the Game of Life
     simulation, including controls for starting/stopping, stepping, clearing,
-    randomizing, selecting presets, adjusting speed, exporting GIFs, and
-    settings.
+    randomizing, selecting presets, adjusting speed, and settings.
 
     Attributes:
         engine (GameOfLife): The game engine instance.
@@ -34,8 +26,6 @@ class GameOfLifeGUI:
         cell_size (int): Size of each cell in pixels.
         root (tk.Tk): The root Tkinter window.
         speed (int): Speed of the simulation.
-        frames (list): List of frames for GIF export.
-        frames_durations (list): Durations for each frame.
         job_id: ID for the scheduled loop.
         running (bool): Whether the simulation is running.
         dragging (bool): Whether the user is dragging the canvas.
@@ -49,7 +39,6 @@ class GameOfLifeGUI:
         speed_slider (tk.Scale): Speed slider.
         presets_opts (tk.StringVar): Variable for preset selection.
         preset_opts_list (tk.OptionMenu): Option menu for presets.
-        export_gif_btn (tk.Button): Export GIF button.
         open_settings_btn (tk.Button): Settings button.
         cell_buttons (list): 2D list of canvas rectangles for cells.
         cells_canvas (tk.Canvas): Canvas for drawing cells.
@@ -121,8 +110,6 @@ class GameOfLifeGUI:
         self.cell_size = 20
         self.root = root
         self.speed = 1
-        self.frames = []
-        self.frames_durations = []
 
         self.root.geometry('850x700')
         self.root.title("Conway's Game of Life")
@@ -183,17 +170,6 @@ class GameOfLifeGUI:
             bg=self.CLR_BG, fg=self.CLR_TEXT, bd=0, relief="flat"
         )
 
-        self.export_gif_btn = tk.Button(
-            self.ctrl_frame, text="Export GIF", **self.STYLE_CLK_BTN,
-            command=self.save_recording
-        )
-
-        if not HAS_PIL:
-            self.export_gif_btn.config(
-                state=tk.DISABLED, 
-                **self.STYLE_GREYED_BTN
-            )
-
         self.open_settings_btn = tk.Button(
             self.ctrl_frame, text="Settings", **self.STYLE_CLK_BTN,
             command=self.open_settings_window
@@ -241,7 +217,6 @@ class GameOfLifeGUI:
         self.start_btn.grid       (row=0, column=3, padx=10, pady=5)
         self.step_btn.grid        (row=0, column=4, padx=10, pady=5)
         self.speed_slider.grid    (row=0, column=5, padx=10, pady=5)
-        self.export_gif_btn.grid  (row=0, column=6, padx=10, pady=5)
         self.open_settings_btn.grid(row=0, column=7, padx=10, pady=5)
 
         self.pop_stat_lbl.grid    (row=0, column=0, padx=10, pady=10)
@@ -575,7 +550,7 @@ class GameOfLifeGUI:
     def refresh_gui(self, clear: bool = False) -> None:
         """Refreshes the entire GUI.
 
-        Calls all refresh methods and saves a frame for GIF export.
+        Calls all refresh methods.
 
         Args:
             clear (bool, optional): Whether to clear the preset selection. Defaults to False.
@@ -587,61 +562,3 @@ class GameOfLifeGUI:
         self.refresh_slider()
         self.refresh_cells()
         self.refresh_stats()
-
-        #self.root.update()
-        self.save_img()
-
-    ##### Saving to GIF #####
-
-    def save_img(self) -> None:
-        """Saves a screenshot of the current window state.
-
-        Captures the window and adds it to the frames list for GIF export.
-        """
-        logging.info("Recording the GUI")
-
-        if not self.root.winfo_exists():
-            return
-
-        x = self.root.winfo_rootx()
-        y = self.root.winfo_rooty()
-        w = self.root.winfo_width()
-        h = self.root.winfo_height()
-
-
-        img = ImageGrab.grab(bbox=(x, y, x + w, y + h), include_layered_windows=False, all_screens=False)
-        img = img.resize((w//2, h//2), resample=Image.LANCZOS)
-        self.frames.append(img)
-        self.frames_durations.append(max(round(1000 * self.speed), 20))
-
-    def save_recording(self) -> None:
-        """Saves the recorded frames as a GIF file.
-
-        Prompts the user for a file path and saves the animation.
-        """
-        logging.info("Saving the game record")
-
-        if not self.frames:
-            logging.error("No frames to save")
-            return
-        
-        file_path = filedialog.asksaveasfilename(
-            defaultextension=".gif",
-            filetypes=[("GIF files", "*.gif"), ("All files", "*.*")],
-            initialfile="gameoflife.gif",
-            title="Choose where to save your game recording"
-        )
-
-        if not file_path:
-            logging.info("No path was selected.")
-            return
-
-        self.frames[0].save(
-            file_path,
-            save_all=True,
-            append_images=self.frames[1:],
-            duration=self.frames_durations,
-            loop=0
-        )
-
-        logging.info(f"The recording was saved successfully to: {file_path}")

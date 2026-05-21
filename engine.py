@@ -4,7 +4,7 @@ GameOfLife class, which implements the logic for Conway's Game of Life and Life-
 The GameOfLife class manages the grid, applies the rules of the game, and tracks statistics such as population and growth rate.
 The class provides methods for loading preset patterns, randomizing the grid, toggling cell states, and changing game rules and dimensions.
 """
-
+from scipy.signal import convolve2d
 import numpy as np
 import random
 import logging
@@ -24,6 +24,18 @@ class GameOfLife:
                  ( 1, 0)
         ]
     }
+
+    KERNEL_MOORE = np.array([
+        [1,1,1],
+        [1,0,1],
+        [1,1,1]
+    ], dtype=np.uint8)
+
+    KERNEL_VON_NEUMANN = np.array([
+        [0,1,0],
+        [1,0,1],
+        [0,1,0]
+    ], dtype=np.uint8)
 
     def __init__(self, rows: int, cols: int) -> None:
         """
@@ -80,7 +92,7 @@ class GameOfLife:
         """
         if self.rows < 1 or self.cols < 1:
             raise ValueError(f"Grid dimensions must be >= 1, Received rows: {self.rows}, columns: {self.cols}")
-        self._grid = np.zeros((self.rows, self.cols), dtype=bool)
+        self._grid = np.zeros((self.rows, self.cols), dtype=np.uint8)
 
     def load_preset(self, coords: list[tuple[int, int]]) -> None:
         """
@@ -96,54 +108,43 @@ class GameOfLife:
 
         center = (round(self.rows / 2), round(self.cols / 2))
         for r, c in coords:
-            self._grid[r + center[0], c + center[1]] = True
+            self._grid[r + center[0], c + center[1]] = 1
         self.update_population()
 
+    def neighbor_count(self) -> np.ndarray:
+        """
+        Counts the number of live neighbors for each cell in the grid.
+
+        Uses convolution with the appropriate kernel based on the neighborhood type
+        to efficiently count live neighbors for all cells.
+
+        Returns:
+            A 2D array of the same shape as the grid, where each element represents
+            the count of live neighbors for the corresponding cell.
+        """
+        if self.neighborhood == "Moore":
+            return convolve2d(self._grid, self.KERNEL_MOORE, mode='same', boundary='fill', fillvalue=0)
+        elif self.neighborhood == "Von Neumann":
+            return convolve2d(self._grid, self.KERNEL_VON_NEUMANN, mode='same', boundary='fill', fillvalue=0)
+        else:
+            raise ValueError(f"Invalid neighborhood type: {self.neighborhood}")
+        
     def step(self) -> None:
         """
         Advances the simulation by one generation.
 
-        Uses iteration over each cell in the grid to determine its next state
-        based on the current state and the defined rules, then updates the grid
-        and statistics accordingly.
+        Applies the rules of the game to determine which cells will be alive or dead in the next generation.
         """
-        grid_next_gen = np.zeros_like(self._grid)
-        for r in range(self.rows):
-            for c in range(self.cols):
-                grid_next_gen[r, c] = self.next_state(r, c)
-        self._grid = grid_next_gen.copy()
+        neighbors = self.neighbor_count()
+        alive = self._grid
+        self._grid = (
+            ((alive == 1) & np.isin(neighbors, list(self.survive))) |
+            ((alive == 0) & np.isin(neighbors, list(self.birth)))
+        ).astype(np.uint8)
         self.population_prev = self.population
         self.update_population()
         self.gen += 1
 
-    def next_state(self, r: int, c: int) -> bool:
-        """
-        Determines the next state of the cell at the given position.
-
-        Uses iteration over the defined neighborhood to count live neighbors and
-        applies the birth/survival rules.
-
-        Args:
-            r: Row index of the cell.
-            c: Column index of the cell.
-
-        Returns:
-            The next state of the cell (True for alive, False for dead).
-        """
-        current_cell = self._grid[r, c]
-
-        neighbors_count = 0
-        for dr, dc in self.neighbor_coords[self.neighborhood]:
-            nr, nc = r + dr, c + dc
-        
-            if 0 <= nr < self.rows and 0 <= nc < self.cols:
-                if self._grid[nr, nc]:
-                    neighbors_count += 1
-
-        if current_cell: # Survive
-            return neighbors_count in self.survive
-        return neighbors_count in self.birth # Birth
-    
     def set_rand_density(self, density: float) -> None:
         """
         Sets the density for randomization.
@@ -193,9 +194,9 @@ class GameOfLife:
             self.set_seed()
 
         self._grid = self.rng.choice(
-            [True, False], size=self._grid.shape,
+            [1, 0], size=self._grid.shape,
             p=[self.rand_density, 1 - self.rand_density]
-        )
+        ).astype(dtype=np.uint8)
 
         self.update_population()
     

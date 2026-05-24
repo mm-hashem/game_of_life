@@ -376,13 +376,18 @@ class GameOfLifeGUI:
         the next iteration.
         """
         logging.info("Game loop")
+
+        if self.running:
+            self.job_id = self.root.after(round(1000 * self.speed), self.loop)
+
         self.step_gui()
-        if not self.engine.has_live_cells():
+        
+        if self.engine.population == 0:
             logging.info("No live cell")
             self.clear_gui()
         else:
             logging.info("There are live cells")
-        self.job_id = self.root.after(round(1000 * self.speed), self.loop)
+            self.refresh_gui()
 
     def on_cell_click(self, r: int, c: int) -> None:
         """Handles cell click events.
@@ -535,7 +540,7 @@ class GameOfLifeGUI:
         next_text = "Stop" if self.running else "Start"
         self.start_btn.config(text=next_text)
 
-        if self.engine.has_live_cells():
+        if self.engine.population > 0:
             self.start_btn.config(bg=self.CLR_CLK_BTN, state=tk.NORMAL)
             self.clear_btn.config(bg=self.CLR_CLK_BTN, state=tk.NORMAL)
             self.step_btn.config (bg=self.CLR_CLK_BTN, state=tk.NORMAL)

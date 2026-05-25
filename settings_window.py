@@ -125,7 +125,7 @@ class SettingsWindow:
 
         ##### Notice label - Row 0
         self.info_lbl = tk.Label(
-            self.settings_btns_frame, text="All inputs must be integers",
+            self.settings_btns_frame, text="Settings",
             **self.STYLE_LABEL
         )
         
@@ -198,7 +198,7 @@ class SettingsWindow:
         self.cols_entry = tk.Entry(
             self.settings_btns_frame, **self.STYLE_ENTRY,
             validate="key",
-            validatecommand=(self.root.register(self.validate_dimensions), '%P')
+            validatecommand=(self.root.register(self.validate_positive_integer), '%P')
         )
         self.cols_entry.insert(0, str(self.cols))
 
@@ -209,7 +209,7 @@ class SettingsWindow:
         self.rows_entry = tk.Entry(
             self.settings_btns_frame, **self.STYLE_ENTRY,
             validate="key",
-            validatecommand=(self.root.register(self.validate_dimensions), '%P')
+            validatecommand=(self.root.register(self.validate_positive_integer), '%P')
         )
         self.rows_entry.insert(0, str(self.rows))
 
@@ -220,7 +220,7 @@ class SettingsWindow:
         self.cell_size_entry = tk.Entry(
             self.settings_btns_frame, **self.STYLE_ENTRY,
             validate="key",
-            validatecommand=(self.root.register(self.validate_dimensions), '%P')
+            validatecommand=(self.root.register(self.validate_positive_integer), '%P')
         )
         self.cell_size_entry.insert(0, str(self.cell_size))
 
@@ -236,7 +236,9 @@ class SettingsWindow:
             **self.STYLE_LABEL
         )
         self.rand_density_entry = tk.Entry(
-            self.settings_btns_frame, **self.STYLE_ENTRY
+            self.settings_btns_frame, **self.STYLE_ENTRY,
+            validate="key",
+            validatecommand=(self.root.register(self.validate_positive_decimal), '%P')
         )
         self.rand_density_entry.insert(0, str(self.rand_density * 100.0))
 
@@ -301,37 +303,43 @@ class SettingsWindow:
 
         self.save_settings_btn.grid(row=9, column=0, padx=10, pady=5, columnspan=4)
     
+    def display_error(self, message: str) -> None:
+        """
+        Displays an error message in the settings window.
+        
+        The error message is shown in red text below the input fields for 2 seconds.
+
+        Args:
+            message: The error message to display.
+        """
+        self.entry_error_lbl.config(text=message)
+        self.root.after(2000, lambda: self.entry_error_lbl.config(text=""))
+
     def send_settings_back(self):
         """
-        Collects and validates the settings, and sends them back via the callback.
+        Collects the settings, and sends them back via the callback.
         
         If the input values are valid, the settings window is closed and the
         callback is invoked with the new settings. Uses iteration and set
         comprehension to convert the birth and survive rulestrings into sets
         of integers.
         """
-        birth_str = self.birth_entry.get()
-        survive_str = self.survive_entry.get()
         try:
+            birth_str = self.birth_entry.get()
+            survive_str = self.survive_entry.get()
             neighborhood = self.neighborhoods_opts.get()
-            birth = {int(char) for char in birth_str} 
-            survive = {int(char) for char in survive_str} 
-            cols = max(1, int(self.cols_entry.get()))
-            rows = max(1, int(self.rows_entry.get()))
-            cell_size = max(1, int(self.cell_size_entry.get()))
-            density = float(self.rand_density_entry.get()) / 100.0
-            # TODO move validation to the engine
-            seed_input = self.seed_entry.get()
-            if seed_input.isnumeric():
-                seed = int(seed_input)
-            else:
-                seed = None if seed_input == '' else seed_input
+            cols = self.cols_entry.get()
+            rows = self.rows_entry.get()
+            cell_size = self.cell_size_entry.get()
+            density = self.rand_density_entry.get()
+            seed = self.seed_entry.get()
         except ValueError:
             logging.error("Invalid input values, cannot save settings")
-            return
+            self.display_error("Invalid input values")
+            raise ValueError("Invalid input values")
         
         self.settings_window.destroy()
-        self.callback(neighborhood, birth, survive, cols, rows, cell_size, density, seed)
+        self.callback(neighborhood, birth_str, survive_str, cols, rows, cell_size, density, seed)
 
     def validate_rulestring(self, rulestring: str) -> bool:
         """
@@ -343,31 +351,65 @@ class SettingsWindow:
         If the rulestring is valid, the save button is enabled; otherwise,
         an error message is displayed. Uses iteration and set comprehension
         to check the validity of the rulestring.
+
+        Args:
+            rulestring: The input string representing birth or survival rules.
+
+        Returns:
+            True if the rulestring is valid, False otherwise.
         """
         rule = {int(char) for char in rulestring}
         neighbors = 8 if self.neighborhoods_opts.get() == "Moore" else 4
         if len(rule) <= neighbors + 1 and all(x <= neighbors for x in rule):
             return True
-        self.entry_error_lbl.config(text="Invalid rulestring")
-        self.root.after(2000, lambda: self.entry_error_lbl.config(text=""))
+        self.display_error(f"Invalid rulestring: {rulestring}.\nMust be digits 0-{neighbors} with no duplicates.")
         return False
     
-    def validate_dimensions(self, dimension: str) -> bool:
+    def validate_positive_integer(self, value: str) -> bool:
         """
-        Validates the grid dimension and cell size inputs.
+        Validates positive integer inputs.
         
-        The input should be a positive integer. If the input is valid, the save
+        The input should be a positive integer.
+        If the input is valid, the save button is enabled; otherwise, an error
+        message is displayed. An empty input is considered valid to allow clearing
+        the entry, but it will disable the save button until a valid value is entered.
+
+        Args:
+            value: The input string to validate.
+        Returns:
+            True if the input is a valid positive integer or empty, False otherwise.
+        """
+        if value.isdecimal():
+            if int(value) > 0:
+                self.save_settings_btn.config(state=tk.NORMAL, **self.STYLE_CLK_BTN)
+                return True
+        elif value == '':
+            self.save_settings_btn.config(state=tk.DISABLED, **self.STYLE_GREYED_BTN)
+            return True
+        self.display_error(f"Invalid input: {value}. Must be a positive integer.")
+        return False
+    
+    def validate_positive_decimal(self, value: str) -> bool:
+        """
+        Validates positive decimal inputs.
+        
+        The input should be a positive decimal number. If the input is valid, the save
         button is enabled; otherwise, the save button is disabled. An empty input
         is considered valid to allow clearing the entry, but it will disable the
         save button until a valid value is entered.
+
+        Args:
+            value: The input string to validate.
+        Returns:
+            True if the input is a valid positive decimal or empty, False otherwise.
         """
-        if dimension.isdigit():
-            if int(dimension) > 0:
+        if value.replace(".", "", 1).isdigit():
+            if float(value) > 0:
                 self.save_settings_btn.config(state=tk.NORMAL, **self.STYLE_CLK_BTN)
                 return True
         # Return true to allow clearing the entry but disable saving
-        elif dimension == '':
+        elif value == '':
             self.save_settings_btn.config(state=tk.DISABLED, **self.STYLE_GREYED_BTN)
             return True
-        self.save_settings_btn.config(state=tk.DISABLED, **self.STYLE_GREYED_BTN)
+        self.display_error(f"Invalid input: {value}. Must be a positive decimal number.")
         return False

@@ -238,27 +238,45 @@ class GameOfLifeGUI:
         )
 
     def apply_settings(
-            self, neighborhood: str, birth: set[int], survive: set[int],
-            rows: int, cols: int, cell_size: int, density: float, seed: str | int | None
+            self, neighborhood: str, birth_str: str, survive_str: str,
+            rows: str, cols: str, cell_size: str, density: str, seed: str | int | None
         ) -> None:
         """Applies the settings from the settings window.
 
         Args:
             neighborhood: The neighborhood type.
-            birth: Set of birth rules.
-            survive: Set of survival rules.
+            birth_str: String of birth rules.
+            survive_str: String of survival rules.
             rows: Number of rows in the grid.
             cols: Number of columns in the grid.
             cell_size: Size of each cell in pixels.
             density: Density for randomization.
             seed: Seed for randomization.
         """
-        
-        self.engine.change_rules(birth, survive, neighborhood)
+
+        # Process settings
+        try:
+            birth   = {int(char) for char in birth_str} 
+            survive = {int(char) for char in survive_str}
+            rows = int(rows)
+            cols = int(cols)
+            cell_size = int(cell_size)
+            density = float(density) / 100.0
+            if seed.isnumeric():
+                seed = int(seed)
+            else:
+                seed = None if seed == '' else seed
+        except ValueError as e:
+            logging.error(f"Invalid settings input: {e}")
+            # TODO - show error message to user instead of just logging
+            return
+
         try:
             self.engine.set_rand_density(density)
         except ValueError as e:
             logging.error(f"Failed to set randomization density: {e}")
+            
+        self.engine.change_rules(birth, survive, neighborhood)
         self.engine.set_seed(seed, seed_set=True)
         self.cell_size = cell_size
         try:
@@ -376,12 +394,9 @@ class GameOfLifeGUI:
         the next iteration.
         """
         logging.info("Game loop")
-
         if self.running:
             self.job_id = self.root.after(round(1000 * self.speed), self.loop)
-
         self.step_gui()
-        
         if self.engine.population == 0:
             logging.info("No live cell")
             self.clear_gui()

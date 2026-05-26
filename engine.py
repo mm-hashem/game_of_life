@@ -141,6 +141,7 @@ class GameOfLife:
             ((alive == True)  & np.isin(neighbors, list(self.survive))) |
             ((alive == False) & np.isin(neighbors, list(self.birth)))
         ).astype(np.bool)
+        self.gen += 1
         self.update_stats()
 
     def set_rand_density(self, density: float) -> None:
@@ -207,7 +208,6 @@ class GameOfLife:
         self.density = self.population / float(self.rows * self.cols)
         if self.population_prev != 0:
             self.growth_rate = round(((self.population - self.population_prev) / self.population_prev) * 100, 2)
-        self.gen += 1
     
     def change_rules(self, birth: set[int], survive: set[int], neighborhood: str | None = None) -> None:
         """

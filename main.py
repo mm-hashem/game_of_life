@@ -16,12 +16,15 @@ def main() -> None:
             filename='gol.log', filemode='w', level=logging.INFO,
             format='%(asctime)s - %(levelname)s - %(filename)s - %(module)s - %(funcName)s - %(lineno)d - %(message)s'
         )
+    else:
+        logging.disable(logging.CRITICAL)
 
     root = tk.Tk()
     logging.info("Instantiated Tkinter")
 
-    ROWS = 50
-    COLS = 50
+    ROWS = 1000
+    COLS = 1000
+    CELL_SIZE = 10
     PATTERNS_FOLDER = "patterns"
 
     engine = GameOfLife(ROWS, COLS)
@@ -29,7 +32,7 @@ def main() -> None:
 
     rle_manager = RLEManager(PATTERNS_FOLDER)
 
-    gui = GameOfLifeGUI(root, engine, rle_manager)
+    gui = GameOfLifeGUI(root, engine, rle_manager, CELL_SIZE)
     logging.info("Instantiated GameOfLifeGUI")
 
     root.protocol("WM_DELETE_WINDOW", root.destroy)

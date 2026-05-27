@@ -429,8 +429,8 @@ class GameOfLifeGUI:
         if self.running:
             self.loop()
         else:
-            self.refresh_gui()
             self.stop_loop()
+            self.refresh_gui()
 
     def stop_loop(self) -> None:
         """Stops the game loop.
@@ -457,7 +457,8 @@ class GameOfLifeGUI:
         
         if self.engine.population == 0:
             logging.info("No live cell")
-            self.clear_gui()
+            self.stop_loop()
+            self.refresh_gui()
         else:
             logging.info("There are live cells")
             self.refresh_gui()

@@ -13,6 +13,7 @@ Key capabilities:
 - Adjustable grid dimensions at runtime
 - Load and apply Golly `.rle` pattern files from the `patterns/` folder
 - Randomize the board, step generation-by-generation, or run continuously
+- Save and rewind to previous states
 
 ## Project Structure
 
@@ -31,6 +32,7 @@ Key capabilities:
 - Full simulation step logic with alive/dead transitions
 - Grid resizing with validation
 - Live population, density, generation count, and growth rate tracking
+- Save and rewind to previous states
 
 ### GUI
 - Start/stop simulation loop
@@ -40,6 +42,7 @@ Key capabilities:
 - Select preset patterns from `.rle` files
 - Open settings window to configure rules and grid size
 - Pan and zoom the board view
+- Rewind to previous states
 
 ### Pattern Loading
 - Reads `.rle` files from the `patterns/` directory
@@ -87,6 +90,7 @@ python3 main.py
 ### Buttons
 - `Select pattern`: Choose a pattern from the dropdown list to load a pattern from `patterns/`.
 - `Random`: generate a random starting board.
+- `Rewind`: step back to the previous state.
 - `Clear`: reset the board.
 - `Start`: start automatic evolution.
 - `Step`: advance one generation.
@@ -124,7 +128,7 @@ python3 main.py
 
 - [ ] ~~Optimize memory allocation through the implementation of sparse matrices.~~
 - [x] Improve processing speed by utilizing convolutions and kernels.
-- [ ] Add rewind button to load the initial generation.
+- [x] Add rewind button to load the initial generation.
 - [ ] Export/import settings.
 - [ ] Export patterns in RLE format.
 - [ ] Randomize settings button.

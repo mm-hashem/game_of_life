@@ -51,6 +51,7 @@ class GameOfLife:
 
         # Cells grid
         self._grid = None
+        self.saved_grid = None
         
         # Dimensions
         self.rows = rows
@@ -83,16 +84,22 @@ class GameOfLife:
         except Exception as e:
             logging.fatal(f"An unexpected error occurred: {e}")
 
-    def create_grid(self) -> None:
+    def create_grid(self, fromsaved: bool = False) -> None:
         """
-        Initializes the grid based on the current dimensions.
+        Creates the grid based on the current dimensions and optionally loads a saved state.
 
         Raises:
             ValueError: If dimensions are invalid.
         """
         if self.rows < 1 or self.cols < 1:
             raise ValueError(f"Grid dimensions must be >= 1, Received rows: {self.rows}, columns: {self.cols}")
-        self._grid = np.zeros((self.rows, self.cols), dtype=np.bool)
+        
+        if fromsaved and self.saved_grid is not None:
+            self._grid = self.saved_grid.copy()
+        else:
+            self._grid = np.zeros((self.rows, self.cols), dtype=np.bool)
+
+        self.update_stats()
 
     def load_preset(self, coords: list[tuple[int, int]]) -> None:
         """
@@ -157,7 +164,6 @@ class GameOfLife:
         if density < 0.0 or density > 1.0:
             raise ValueError(f"Density must be between 0.0 and 1.0, Received density: {density}")
         self.rand_density = density
-
 
     def set_seed(self, seed: int | str | None = None, seed_set: bool = False) -> None:
         """
@@ -285,3 +291,9 @@ class GameOfLife:
         self.gen         = 0
         self.growth_rate = 0.0
         self.density     = 0.0
+
+    def save_grid(self) -> None:
+        """
+        Saves the current state of the grid for later retrieval.
+        """
+        self.saved_grid = self._grid.copy()

@@ -145,6 +145,13 @@ class GameOfLifeGUI:
         self.ctrl_frame = tk.Frame(self.root, bg=self.CLR_BG)
         self.ctrl_frame.pack()
 
+        ##### Rewind Button
+
+        self.rewind_btn = tk.Button(
+            self.ctrl_frame, text="Rewind", **self.STYLE_GREYED_BTN,
+            state=tk.DISABLED, command=self.rewind
+        )
+
         self.start_btn = tk.Button(
             self.ctrl_frame, text="Start",
             **(self.STYLE_GREYED_BTN | {"padx": 15, "font": ("Segoe UI", 14)}),
@@ -224,12 +231,13 @@ class GameOfLifeGUI:
         ##############################
         logging.info("Placing the main window's components")
 
-        self.preset_opts_list.grid(row=0, column=0, padx=10, pady=5)
-        self.random_btn.grid      (row=0, column=1, padx=10, pady=5)
-        self.clear_btn.grid       (row=0, column=2, padx=10, pady=5)
-        self.start_btn.grid       (row=0, column=3, padx=10, pady=5)
-        self.step_btn.grid        (row=0, column=4, padx=10, pady=5)
-        self.speed_slider.grid    (row=0, column=5, padx=10, pady=5)
+        self.preset_opts_list.grid (row=0, column=0, padx=10, pady=5)
+        self.random_btn.grid       (row=0, column=1, padx=10, pady=5)
+        self.rewind_btn.grid       (row=0, column=2, padx=10, pady=5)
+        self.clear_btn.grid        (row=0, column=3, padx=10, pady=5)
+        self.start_btn.grid        (row=0, column=4, padx=10, pady=5)
+        self.step_btn.grid         (row=0, column=5, padx=10, pady=5)
+        self.speed_slider.grid     (row=0, column=6, padx=10, pady=5)
         self.open_settings_btn.grid(row=0, column=7, padx=10, pady=5)
 
         self.pop_stat_lbl.grid    (row=0, column=0, padx=10, pady=10)
@@ -419,12 +427,25 @@ class GameOfLifeGUI:
             self.cells_canvas.itemconfig(self.canvas_img_id, image=self.tk_img)
             self.cells_canvas.coords(self.canvas_img_id, img_x, img_y)
 
+    def rewind(self) -> None:
+        """Rewinds the simulation to the previously saved state.
+
+        This method restores the grid to the last saved state and refreshes the GUI.
+        """
+        self.stop_loop()
+        self.engine.create_grid(fromsaved=True)
+        self.refresh_gui()
+
     def start(self) -> None:
         """Starts or stops the simulation.
 
         Toggles the running state and begins the game loop if starting.
         """
         logging.info("Starting the game")
+        
+        if not self.running:
+            self.engine.save_grid()
+
         self.running = not self.running
         if self.running:
             self.loop()
@@ -666,6 +687,11 @@ class GameOfLifeGUI:
                 self.start_btn.config(bg=self.CLR_GREYED_BTN, state=tk.DISABLED)
             self.clear_btn.config(bg=self.CLR_GREYED_BTN, state=tk.DISABLED)
             self.step_btn.config (bg=self.CLR_GREYED_BTN, state=tk.DISABLED)
+
+        if self.engine.saved_grid is not None:
+            self.rewind_btn.config(bg=self.CLR_CLK_BTN, state=tk.NORMAL)
+        else:
+            self.rewind_btn.config(bg=self.CLR_GREYED_BTN, state=tk.DISABLED)
 
         if clear_optmenu: self.presets_opts.set("Select pattern")
 

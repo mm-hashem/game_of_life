@@ -21,7 +21,7 @@ Key capabilities:
 - `gui.py` - Tkinter-based graphical interface and interaction logic
 - `rle_manager.py` - parser and loader for `.rle` pattern files
 - `settings_window.py` - settings dialog for rules, neighborhood mode, dimensions, and cell size
-- `patterns/` - example `.rle` files for preset patterns
+- `patterns/` - `.rle` files for preset patterns
 - `requirements.txt` - package dependencies
 
 ## Features
@@ -85,11 +85,11 @@ python3 main.py
 ## Usage
 
 ### Buttons
+- `Select pattern`: Choose a pattern from the dropdown list to load a pattern from `patterns/`.
 - `Random`: generate a random starting board.
+- `Clear`: reset the board.
 - `Start`: start automatic evolution.
 - `Step`: advance one generation.
-- `Clear`: reset the board.
-- `Select pattern`: Choose a pattern from the dropdown list to load a pattern from `patterns/`.
 - Speed slider: adjust simulation speed.
 - `Settings`: open settings window.
 
@@ -99,6 +99,9 @@ python3 main.py
 - Survival rule (`S` digits)
 - Grid dimensions (`rows` and `columns`)
 - Cell display size
+- Randomness:
+    - Population density (0-100%)
+    - Random seed for reproducibility: enter an integer or a string. Hashed with MD5.
 
 ## Design Notes
 
@@ -113,16 +116,25 @@ python3 main.py
 
 ## Defaults
 
-- Grid size: `50 x 50`
+- Grid size: `1000 x 1000`
 - Neighborhood: `Moore`
 - Rule set: `B3/S23` (Conway's Game of Life)
 
 ## Future development
 
-- Optimize memory allocation through the implementation of sparse matrices.
-- Improve processing speed by utilizing convolutions and kernels.
-- Add rewind button to step back through generations.
-- Implement pattern saving and loading in a RLE format.
+- [ ] ~~Optimize memory allocation through the implementation of sparse matrices.~~
+- [x] Improve processing speed by utilizing convolutions and kernels.
+- [ ] Add rewind button to load the initial generation.
+- [ ] Export/import settings.
+- [ ] Export patterns in RLE format.
+- [ ] Randomize settings button.
+- [ ] Select seed hashing function button.
+- [ ] Button to reset seed setting.
+- [ ] Show error messages for invalid settings or patterns.
+- [ ] Change GUI theme and colors.
+- [ ] Add more neighborhood types: extended Moore/Von Neumann, circular.
+- [ ] Add a dropdown to select popular cellular automata: HighLife, Day and Night, etc.
+- [ ] Multi-coloring: aging, ghosting, different species
 
 ## License
 

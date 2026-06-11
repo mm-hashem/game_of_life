@@ -50,8 +50,8 @@ class GameOfLife:
         """
 
         # Cells grid
-        self._grid = None
-        self.saved_grid = None
+        self.grid = None
+        self.__saved_grid = None
         
         # Dimensions
         self.rows = rows
@@ -94,12 +94,21 @@ class GameOfLife:
         if self.rows < 1 or self.cols < 1:
             raise ValueError(f"Grid dimensions must be >= 1, Received rows: {self.rows}, columns: {self.cols}")
         
-        if fromsaved and self.saved_grid is not None:
-            self._grid = self.saved_grid.copy()
+        if fromsaved and self.__saved_grid is not None:
+            self.grid = self.__saved_grid.copy()
         else:
-            self._grid = np.zeros((self.rows, self.cols), dtype=np.bool)
+            self.grid = np.zeros((self.rows, self.cols), dtype=np.bool)
 
         self.update_stats()
+
+    def is_grid_saved(self) -> bool:
+        """
+        Checks if there is a saved grid state available.
+
+        Returns:
+            True if a saved grid exists, False otherwise.
+        """
+        return self.__saved_grid is not None
 
     def load_preset(self, coords: list[tuple[int, int]]) -> None:
         """
@@ -115,7 +124,7 @@ class GameOfLife:
 
         center = (round(self.rows / 2), round(self.cols / 2))
         for r, c in coords:
-            self._grid[r + center[0], c + center[1]] = 1
+            self.grid[r + center[0], c + center[1]] = 1
         self.update_stats()
 
     def neighbor_count(self) -> np.ndarray:
@@ -130,9 +139,9 @@ class GameOfLife:
             the count of live neighbors for the corresponding cell.
         """
         if self.neighborhood == "Moore":
-            return convolve2d(self._grid.astype(np.uint8), self.KERNEL_MOORE.astype(np.uint8), mode='same', boundary='fill', fillvalue=0)
+            return convolve2d(self.grid.astype(np.uint8), self.KERNEL_MOORE.astype(np.uint8), mode='same', boundary='fill', fillvalue=0)
         elif self.neighborhood == "Von Neumann":
-            return convolve2d(self._grid.astype(np.uint8), self.KERNEL_VON_NEUMANN.astype(np.uint8), mode='same', boundary='fill', fillvalue=0)
+            return convolve2d(self.grid.astype(np.uint8), self.KERNEL_VON_NEUMANN.astype(np.uint8), mode='same', boundary='fill', fillvalue=0)
         else:
             raise ValueError(f"Invalid neighborhood type: {self.neighborhood}")
         
@@ -143,8 +152,8 @@ class GameOfLife:
         Applies the rules of the game to determine which cells will be alive or dead in the next generation.
         """
         neighbors = self.neighbor_count()
-        alive = self._grid
-        self._grid = (
+        alive = self.grid
+        self.grid = (
             ((alive == True)  & np.isin(neighbors, list(self.survive))) |
             ((alive == False) & np.isin(neighbors, list(self.birth)))
         ).astype(np.bool)
@@ -198,8 +207,8 @@ class GameOfLife:
         else:
             self.set_seed()
 
-        self._grid = self.rng.choice(
-            [True, False], size=self._grid.shape,
+        self.grid = self.rng.choice(
+            [True, False], size=self.grid.shape,
             p=[self.rand_density, 1 - self.rand_density]
         ).astype(dtype=np.bool)
 
@@ -210,7 +219,7 @@ class GameOfLife:
         Updates all statistics related to the current state of the grid.
         """
         self.population_prev = self.population
-        self.population = np.count_nonzero(self._grid)
+        self.population = np.count_nonzero(self.grid)
         self.density = self.population / float(self.rows * self.cols)
         if self.population_prev != 0:
             self.growth_rate = round(((self.population - self.population_prev) / self.population_prev) * 100, 2)
@@ -247,7 +256,7 @@ class GameOfLife:
             raise ValueError(f"Cell coordinates must be >= 1, Received coordinates: (row={self.rows}, column={self.cols})")
         elif r >= self.rows or c >= self.cols:
             raise ValueError(f"Cell coordinates must be within grid bounds, Received coordinates: (row={r}, column={c}), Grid dimensions: (rows={self.rows}, columns={self.cols})")
-        self._grid[r, c] = not self._grid[r, c]
+        self.grid[r, c] = not self.grid[r, c]
         self.update_stats()
 
     def change_dimensions(self, rows: int, cols: int) -> None:
@@ -279,13 +288,13 @@ class GameOfLife:
         Returns:
             The state of the cell (True for alive, False for dead).
         """
-        return self._grid[r, c]
+        return self.grid[r, c]
 
     def clear(self) -> None:
         """
         Clears the grid and resets all statistics.
         """
-        self._grid.fill(False)
+        self.grid.fill(False)
         self.population = 0
         self.population_prev = 0
         self.gen         = 0
@@ -296,4 +305,4 @@ class GameOfLife:
         """
         Saves the current state of the grid for later retrieval.
         """
-        self.saved_grid = self._grid.copy()
+        self.__saved_grid = self.grid.copy()

@@ -400,7 +400,7 @@ class GameOfLifeGUI:
         end_row   = min(self.engine.rows, int((y_canvas + view_h) // self.cell_size) + 1)
         
         # Slice the array
-        visible_grid = self.engine._grid[start_row:end_row, start_col:end_col]
+        visible_grid = self.engine.grid[start_row:end_row, start_col:end_col]
 
         # Colorize the visible grid
         img_array = self.palette[visible_grid.astype(np.uint8)]
@@ -688,7 +688,7 @@ class GameOfLifeGUI:
             self.clear_btn.config(bg=self.CLR_GREYED_BTN, state=tk.DISABLED)
             self.step_btn.config (bg=self.CLR_GREYED_BTN, state=tk.DISABLED)
 
-        if self.engine.saved_grid is not None:
+        if self.engine.is_grid_saved():
             self.rewind_btn.config(bg=self.CLR_CLK_BTN, state=tk.NORMAL)
         else:
             self.rewind_btn.config(bg=self.CLR_GREYED_BTN, state=tk.DISABLED)

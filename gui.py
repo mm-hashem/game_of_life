@@ -272,7 +272,7 @@ class GameOfLifeGUI:
         if self.dragging:
             return
 
-        grid_w, grid_h = self._get_grid_size()
+        grid_w, grid_h = self._get_visual_grid_size()
         if grid_w <= event.width and grid_h <= event.height:
             self.center_canvas()
             self.draw_cells()
@@ -343,12 +343,12 @@ class GameOfLifeGUI:
     def center_canvas(self) -> None:
         """Centers the canvas in the window.
 
-        This method adjusts the canvas view to center the grid within the
+        This method adjusts the canvas view to center the visual grid within the
         available space.
         """
 
         _, _, view_w, view_h = self._get_viewport(0)
-        grid_w, grid_h       = self._get_grid_size()
+        grid_w, grid_h       = self._get_visual_grid_size()
         total_w, total_h     = self._sync_scrollregion(view_w, view_h, grid_w, grid_h)
 
         if grid_w > view_w:
@@ -377,13 +377,13 @@ class GameOfLifeGUI:
     def draw_cells(self) -> None:
         """Draws the cells on the canvas.
 
-        This method calculates the visible portion of the grid, colorizes it,
-        and renders it on the canvas. It also handles centering for small grids
+        This method calculates the visible portion of the visual grid, colorizes it,
+        and renders it on the canvas. It also handles centering for small visual grids
         and keeps the scroll region in sync with the grid size.
         """
         # Get the current visible pixel coordinates of the canvas viewport
         x_canvas, y_canvas, view_w, view_h = self._get_viewport(0)
-        grid_w, grid_h = self._get_grid_size()
+        grid_w, grid_h = self._get_visual_grid_size()
         
         # Fallback
         if view_w <= 1: view_w = grid_w
@@ -414,7 +414,7 @@ class GameOfLifeGUI:
         self.tk_img = ImageTk.PhotoImage(img)
 
         # Compute centering offset for small grids
-        offset_x, offset_y = self._get_grid_offsets(view_w, view_h, grid_w, grid_h)
+        offset_x, offset_y = self._get_visual_grid_offsets(view_w, view_h, grid_w, grid_h)
 
         # Calculate where this cropped image belongs
         img_x = offset_x + start_col * self.cell_size
@@ -498,14 +498,14 @@ class GameOfLifeGUI:
             return
         
         x_canvas, y_canvas, view_w, view_h = self._get_viewport(event)
-        grid_w,   grid_h   = self._get_grid_size()
-        offset_x, offset_y = self._get_grid_offsets(view_w, view_h, grid_w, grid_h)
+        grid_w,   grid_h   = self._get_visual_grid_size()
+        offset_x, offset_y = self._get_visual_grid_offsets(view_w, view_h, grid_w, grid_h)
 
         c = int((x_canvas - offset_x) // self.cell_size)
         r = int((y_canvas - offset_y) // self.cell_size)
 
         if r < 0 or r >= self.engine.rows or c < 0 or c >= self.engine.cols:
-            logging.warning(f"Clicked outside of grid bounds, r: {r}, c: {c}")
+            logging.warning(f"Clicked outside of the visual grid bounds, r: {r}, c: {c}")
             return
 
         logging.info(f"A cell was clicked, r: {r}, c: {c}")
@@ -527,7 +527,8 @@ class GameOfLifeGUI:
     def step_gui(self) -> None:
         """Advances the simulation by one step.
 
-        Calls the engine's step method and refreshes the GUI.
+        This method is called when the user clicks the "Step" button to advance
+        the simulation by a single generation.
         """
         logging.info("Step button was clicked.")
         self.engine.step()
@@ -609,10 +610,10 @@ class GameOfLifeGUI:
 
         # Get the current view metrics before zooming
         x_canvas,     y_canvas, view_w, view_h = self._get_viewport(event)
-        old_grid_w,   old_grid_h   = self._get_grid_size()
-        offset_x_old, offset_y_old = self._get_grid_offsets(view_w, view_h, old_grid_w, old_grid_h)
+        old_grid_w,   old_grid_h   = self._get_visual_grid_size()
+        offset_x_old, offset_y_old = self._get_visual_grid_offsets(view_w, view_h, old_grid_w, old_grid_h)
 
-        # Relative position inside the grid
+        # Relative position inside the visual grid
         rel_x = (x_canvas - offset_x_old) / old_cell
         rel_y = (y_canvas - offset_y_old) / old_cell
 
@@ -625,10 +626,10 @@ class GameOfLifeGUI:
 
         self.cell_size = new_cell
 
-        # Update canvas scrollregion to the new grid size
-        new_grid_w,   new_grid_h   = self._get_grid_size()
+        # Update canvas scrollregion to the new visual grid size
+        new_grid_w,   new_grid_h   = self._get_visual_grid_size()
         total_w,      total_h      = self._sync_scrollregion(view_w, view_h, new_grid_w, new_grid_h)
-        offset_x_new, offset_y_new = self._get_grid_offsets (view_w, view_h, new_grid_w, new_grid_h)
+        offset_x_new, offset_y_new = self._get_visual_grid_offsets (view_w, view_h, new_grid_w, new_grid_h)
 
         new_x_canvas = offset_x_new + rel_x * new_cell
         new_y_canvas = offset_y_new + rel_y * new_cell
@@ -735,11 +736,11 @@ class GameOfLifeGUI:
 
         return x_canvas, y_canvas, view_w, view_h
     
-    def _get_grid_size(self) -> tuple[float, float]:
-        """Calculates the pixel size of the entire grid.
+    def _get_visual_grid_size(self) -> tuple[float, float]:
+        """Calculates the pixel size of the entire visual grid.
 
         Returns:
-            A tuple containing the width and height of the grid in pixels.
+            A tuple containing the width and height of the visual grid in pixels.
         """
         cell_size = max(1, self.cell_size)
 
@@ -748,17 +749,18 @@ class GameOfLifeGUI:
 
         return grid_w, grid_h
     
-    def _get_grid_offsets(self, view_w, view_h, grid_w, grid_h) -> tuple[float, float]:
-        """Calculates centering offsets for the grid.
+    @staticmethod
+    def _get_visual_grid_offsets(view_w, view_h, grid_w, grid_h) -> tuple[float, float]:
+        """Calculates centering offsets for the visual grid.
 
         Args:
             view_w: The width of the visible area.
             view_h: The height of the visible area.
-            grid_w: The width of the grid.
-            grid_h: The height of the grid.
+            grid_w: The width of the visual grid.
+            grid_h: The height of the visual grid.
         
         Returns:
-            A tuple containing the x and y offsets to center the grid within the visible area.
+            A tuple containing the x and y offsets to center the visual grid within the visible area.
         """
         offset_x = max(0, (view_w - grid_w) // 2)
         offset_y = max(0, (view_h - grid_h) // 2)
@@ -766,13 +768,13 @@ class GameOfLifeGUI:
         return offset_x, offset_y
     
     def _sync_scrollregion(self, view_w, view_h, grid_w, grid_h) -> tuple[float, float]:
-        """Synchronizes the canvas scrollregion with the grid size.
+        """Synchronizes the canvas scrollregion with the visual grid size.
 
         Args:
             view_w: The width of the visible area.
             view_h: The height of the visible area.
-            grid_w: The width of the grid.
-            grid_h: The height of the grid.
+            grid_w: The width of the visual grid.
+            grid_h: The height of the visual grid.
 
         Returns:
             A tuple containing the total width and height of the scrollregion.

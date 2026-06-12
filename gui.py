@@ -13,6 +13,7 @@ from rle_manager import RLEManager
 from settings_window import SettingsWindow
 from PIL import Image, ImageTk
 import numpy as np
+from styles import Styles
 
 class GameOfLifeGUI:
 
@@ -51,56 +52,6 @@ class GameOfLifeGUI:
         growth_rate_lbl (tk.Label): Growth rate label.
     """
 
-    # Color palette
-    CLR_BG          = "#112736"
-
-    CLR_DEAD_CELL   = "#8d8d8d"       # Hex
-    color_for_zeros = [141, 141, 141] # RGB
-
-    CLR_ALIVE_CELL  = "#ffff00"     # Hex
-    color_for_ones  = [255, 255, 0] # RGB
-
-    CLR_CELL_BORDER = ""
-    CLR_CLK_BTN     = "#456882" # Clickable button color
-    CLR_GREYED_BTN  = "#D2C1B6" # Greyed-out button color
-    CLR_BTN_BD      = "#234C6A" # Button border
-    CLR_TEXT        = "#ffffff" # Text color
-
-    STYLE_GREYED_BTN = {
-        "bg": CLR_GREYED_BTN,
-        "fg": CLR_TEXT,
-        "bd": 0,
-        "highlightthickness": 2,
-        "relief": "flat",
-        "highlightbackground": CLR_BTN_BD,
-        "activebackground": CLR_BTN_BD,
-        "activeforeground": CLR_TEXT,
-        "padx": 8,
-        "font": ("Segoe UI", 11)
-    }
-
-    STYLE_CLK_BTN = {
-        **STYLE_GREYED_BTN,
-        "bg": CLR_CLK_BTN
-    }
-
-    STYLE_SLIDER = {
-        "bg": CLR_BG,
-        "fg": CLR_TEXT,
-        "bg":CLR_BG,
-        "highlightbackground": CLR_BG,
-        "relief": "flat",
-        "sliderrelief": "flat",
-        "troughcolor": CLR_CLK_BTN
-    }
-
-    STYLE_LABEL = {
-        "bg": CLR_CLK_BTN,
-        "fg": CLR_TEXT,
-        "highlightthickness": 2,
-        "highlightbackground": CLR_BTN_BD
-    }
-
     def __init__(
             self, root: tk.Tk, engine: GameOfLife, rle_manager: RLEManager,
             cell_size: int = 10
@@ -130,51 +81,54 @@ class GameOfLifeGUI:
         self.slider_val_prev = 1
         self.slider_var = tk.IntVar(value=1)
 
-        self.root.config(bg=self.CLR_BG)
+        ##### Styles #####
+        self.styles = Styles(size="medium", show_label_border=True, label_background="light")
+
+        self.root.config(bg=self.styles.CLR_BG)
 
         # Image handling
         self.tk_img = None
         self.canvas_img_id = None
-        self.palette = np.array([self.color_for_zeros, self.color_for_ones], dtype=np.uint8)
+        self.palette = np.array([self.styles.CLR_DEAD_CELL, self.styles.CLR_ALIVE_CELL], dtype=np.uint8)
         self._initial_center_done = False
 
         ########################
         ##### Control Area #####
         ########################
 
-        self.ctrl_frame = tk.Frame(self.root, bg=self.CLR_BG)
+        self.ctrl_frame = tk.Frame(self.root, bg=self.styles.CLR_BG)
         self.ctrl_frame.pack()
 
         ##### Rewind Button
 
         self.rewind_btn = tk.Button(
-            self.ctrl_frame, text="Rewind", **self.STYLE_GREYED_BTN,
+            self.ctrl_frame, text="Rewind", **self.styles.STYLE_GREYED_BTN,
             state=tk.DISABLED, command=self.rewind
         )
 
         self.start_btn = tk.Button(
             self.ctrl_frame, text="Start",
-            **(self.STYLE_GREYED_BTN | {"padx": 15, "font": ("Segoe UI", 14)}),
+            **(self.styles.STYLE_GREYED_BTN | {"padx": 15, "font": ("Segoe UI", 14)}),
             state=tk.DISABLED, command=self.start
         )
 
         self.step_btn = tk.Button(
-            self.ctrl_frame, text="Step", **self.STYLE_GREYED_BTN,
+            self.ctrl_frame, text="Step", **self.styles.STYLE_GREYED_BTN,
             state=tk.DISABLED, command=self.step_gui
         )
         
         self.clear_btn = tk.Button(
-            self.ctrl_frame, text="Clear", **self.STYLE_GREYED_BTN,
+            self.ctrl_frame, text="Clear", **self.styles.STYLE_GREYED_BTN,
             state=tk.DISABLED, command=self.clear_gui
         )
 
         self.random_btn = tk.Button(
-            self.ctrl_frame, text="Random", **self.STYLE_CLK_BTN,
+            self.ctrl_frame, text="Random", **self.styles.STYLE_CLK_BTN,
             command=self.random
         )
 
         self.speed_slider = tk.Scale(
-            self.ctrl_frame, **self.STYLE_SLIDER, orient="horizontal",
+            self.ctrl_frame, **self.styles.STYLE_SLIDER, orient="horizontal",
             from_=-10, to=10, label="1 gen/sec", variable=self.slider_var,
             resolution=1, showvalue=0, command=lambda _:self.speed_control()
         )
@@ -186,13 +140,13 @@ class GameOfLifeGUI:
             *self.rle_manager.available_patterns,
             command=self.select_preset
         )
-        self.preset_opts_list.config(**self.STYLE_CLK_BTN)
+        self.preset_opts_list.config(**self.styles.STYLE_CLK_BTN)
         self.preset_opts_list["menu"].config(
-            bg=self.CLR_BG, fg=self.CLR_TEXT, bd=0, relief="flat"
+            bg=self.styles.CLR_BG, fg=self.styles.CLR_TEXT, bd=0, relief="flat"
         )
 
         self.open_settings_btn = tk.Button(
-            self.ctrl_frame, text="Settings", **self.STYLE_CLK_BTN,
+            self.ctrl_frame, text="Settings", **self.styles.STYLE_CLK_BTN,
             command=self.open_settings_window
         )
 
@@ -203,8 +157,8 @@ class GameOfLifeGUI:
         self.cell_buttons = None
 
         self.cells_canvas = tk.Canvas(
-            self.root, bg=self.CLR_BG,
-            highlightbackground=self.CLR_BG
+            self.root, bg=self.styles.CLR_BG,
+            highlightbackground=self.styles.CLR_BG
         )
         self.cells_canvas.pack(fill="both", expand=True)
 
@@ -217,14 +171,14 @@ class GameOfLifeGUI:
         ##### Statistics #####
         ######################
 
-        self.stats_frame = tk.Frame(self.root, bg=self.CLR_BG)
+        self.stats_frame = tk.Frame(self.root, bg=self.styles.CLR_BG)
         self.stats_frame.pack()
 
         ##### Row 0
-        self.pop_stat_lbl     = tk.Label(self.stats_frame, text="Population: 0",    **self.STYLE_LABEL)
-        self.gen_stat_lbl     = tk.Label(self.stats_frame, text="Generation: 0",    **self.STYLE_LABEL)
-        self.density_stat_lbl = tk.Label(self.stats_frame, text="Density: 0.0",     **self.STYLE_LABEL)
-        self.growth_rate_lbl  = tk.Label(self.stats_frame, text="Growth Rate: 0.0", **self.STYLE_LABEL)
+        self.pop_stat_lbl     = tk.Label(self.stats_frame, text="Population: 0",    **self.styles.STYLE_LABEL)
+        self.gen_stat_lbl     = tk.Label(self.stats_frame, text="Generation: 0",    **self.styles.STYLE_LABEL)
+        self.density_stat_lbl = tk.Label(self.stats_frame, text="Density: 0.0",     **self.styles.STYLE_LABEL)
+        self.growth_rate_lbl  = tk.Label(self.stats_frame, text="Growth Rate: 0.0", **self.styles.STYLE_LABEL)
 
         ##############################
         ##### Placing components #####
@@ -685,19 +639,19 @@ class GameOfLifeGUI:
         self.start_btn.config(text=next_text)
 
         if self.engine.population > 0:
-            self.start_btn.config(bg=self.CLR_CLK_BTN, state=tk.NORMAL)
-            self.clear_btn.config(bg=self.CLR_CLK_BTN, state=tk.NORMAL)
-            self.step_btn.config (bg=self.CLR_CLK_BTN, state=tk.NORMAL)
+            self.start_btn.config(bg=self.styles.CLR_CLK_BTN, state=tk.NORMAL)
+            self.clear_btn.config(bg=self.styles.CLR_CLK_BTN, state=tk.NORMAL)
+            self.step_btn.config (bg=self.styles.CLR_CLK_BTN, state=tk.NORMAL)
         else:
             if not self.running:
-                self.start_btn.config(bg=self.CLR_GREYED_BTN, state=tk.DISABLED)
-            self.clear_btn.config(bg=self.CLR_GREYED_BTN, state=tk.DISABLED)
-            self.step_btn.config (bg=self.CLR_GREYED_BTN, state=tk.DISABLED)
+                self.start_btn.config(bg=self.styles.CLR_GREYED_BTN, state=tk.DISABLED)
+            self.clear_btn.config(bg=self.styles.CLR_GREYED_BTN, state=tk.DISABLED)
+            self.step_btn.config (bg=self.styles.CLR_GREYED_BTN, state=tk.DISABLED)
 
         if self.engine.is_grid_saved():
-            self.rewind_btn.config(bg=self.CLR_CLK_BTN, state=tk.NORMAL)
+            self.rewind_btn.config(bg=self.styles.CLR_CLK_BTN, state=tk.NORMAL)
         else:
-            self.rewind_btn.config(bg=self.CLR_GREYED_BTN, state=tk.DISABLED)
+            self.rewind_btn.config(bg=self.styles.CLR_GREYED_BTN, state=tk.DISABLED)
 
         if clear_optmenu: self.presets_opts.set("Select pattern")
 

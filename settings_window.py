@@ -8,6 +8,7 @@ game rules, grid dimensions, and cell size for the Conway's Game of Life simulat
 import tkinter as tk
 import logging
 from collections.abc import Callable
+from styles import Styles
 
 class SettingsWindow:
     """
@@ -19,55 +20,6 @@ class SettingsWindow:
 
     Attributes:
     """
-
-    # Color palette
-    CLR_BG = "#112736"
-    CLR_DEAD_CELL = "#A3A3A1"
-    CLR_ALIVE_CELL = "#ffff00"
-    CLR_CELL_BORDER = ""
-    CLR_CLK_BTN = "#456882" # Clickable button color
-    CLR_GREYED_BTN = "#D2C1B6" # Greyed-out button color
-    CLR_BTN_BD = "#234C6A" # Button border
-    CLR_TEXT = "#ffffff" # Text color
-    
-    STYLE_GREYED_BTN = {
-        "bg": CLR_GREYED_BTN,
-        "fg": CLR_TEXT,
-        "bd": 0,
-        "highlightthickness": 2,
-        "relief": "flat",
-        "highlightbackground": CLR_BTN_BD,
-        "activebackground": CLR_BTN_BD,
-        "activeforeground": CLR_TEXT,
-        "padx": 5,
-        "font": ("Segoe UI", 9)
-    }
-
-    STYLE_CLK_BTN = {
-        **STYLE_GREYED_BTN,
-        "bg": CLR_CLK_BTN
-    }
-
-    STYLE_LABEL = {
-        "bg": CLR_BG,
-        "fg": CLR_TEXT
-    }
-
-    STYLE_LABEL_ERROR = {
-        "bg": CLR_BG,
-        "fg": "red"
-    }
-
-    STYLE_ENTRY = {
-        "bg": CLR_CLK_BTN,
-        "fg": "#ffffff",
-        "relief": "flat",
-        "highlightthickness": 2,
-        "highlightbackground": CLR_CLK_BTN, 
-        "highlightcolor": CLR_BTN_BD,
-        "bd": 0,
-        "width": 10 
-    }
 
     def __init__(
             self, root: tk.Tk, rows: int, cols: int, cell_size: int,
@@ -102,23 +54,26 @@ class SettingsWindow:
         self.seed = seed
         self.callback = on_save_callback
 
+        ##### Styles #####
+        self.styles = Styles(size="small", show_label_border=False, label_background="none")
+
         ##### Creating the window
-        self.settings_window = tk.Toplevel(self.root, bg=self.CLR_BG)
+        self.settings_window = tk.Toplevel(self.root, bg=self.styles.CLR_BG)
         self.settings_window.title("Settings")
         self.settings_window.geometry("400x350")
         self.settings_window.protocol("WM_DELETE_WINDOW", self.settings_window.destroy)
 
         ##### Creating the buttons frame
-        self.settings_btns_frame = tk.Frame(self.settings_window, bg=self.CLR_BG)
+        self.settings_btns_frame = tk.Frame(self.settings_window, bg=self.styles.CLR_BG)
         self.settings_btns_frame.pack()
 
         self.entry_error_lbl = tk.Label(
             self.settings_btns_frame, text="",
-            **self.STYLE_LABEL_ERROR
+            **self.styles.STYLE_LABEL_ERROR
         )
 
         self.save_settings_btn = tk.Button(
-            self.settings_btns_frame, text="Save", **self.STYLE_CLK_BTN,
+            self.settings_btns_frame, text="Save", **self.styles.STYLE_CLK_BTN,
             command=self.send_settings_back
         )
         self.settings_window.bind('<Return>', lambda event: self.save_settings_btn.invoke())
@@ -126,7 +81,7 @@ class SettingsWindow:
         ##### Notice label - Row 0
         self.info_lbl = tk.Label(
             self.settings_btns_frame, text="Settings",
-            **self.STYLE_LABEL
+            **self.styles.STYLE_LABEL
         )
         
         ######################
@@ -137,7 +92,7 @@ class SettingsWindow:
         ##### Row 1 #####
         self.rules_lbl = tk.Label(
             self.settings_btns_frame, text="Game Rules (MCell)",
-            **self.STYLE_LABEL
+            **self.styles.STYLE_LABEL
         )
 
         ##### Neighbothood Selection - Row 2
@@ -145,7 +100,7 @@ class SettingsWindow:
         # Column 0
         self.neighborhood_lbl = tk.Label(
             self.settings_btns_frame, text="Neighborhood",
-            **self.STYLE_LABEL
+            **self.styles.STYLE_LABEL
         )
 
         # Column 1
@@ -154,19 +109,19 @@ class SettingsWindow:
             self.settings_btns_frame, self.neighborhoods_opts,
             *self.neighborhoods
         )
-        self.neighborhoods_opts_list.config(**self.STYLE_CLK_BTN)
+        self.neighborhoods_opts_list.config(**self.styles.STYLE_CLK_BTN)
         self.neighborhoods_opts_list["menu"].config(
-            bg=self.CLR_BG, fg=self.CLR_TEXT, bd=0, relief="flat"
+            bg=self.styles.CLR_BG, fg=self.styles.CLR_TEXT, bd=0, relief="flat"
         )
 
         ##### Birth Setting - Row 3
 
         self.birth_lbl = tk.Label(
             self.settings_btns_frame, text="Birth",
-            **self.STYLE_LABEL
+            **self.styles.STYLE_LABEL
         )
         self.birth_entry = tk.Entry(
-            self.settings_btns_frame, **self.STYLE_ENTRY,
+            self.settings_btns_frame, **self.styles.STYLE_ENTRY,
             validate="key",
             validatecommand=(self.root.register(self.validate_rulestring), '%P')
         )
@@ -176,10 +131,10 @@ class SettingsWindow:
 
         self.survive_lbl = tk.Label(
             self.settings_btns_frame, text="Survive",
-            **self.STYLE_LABEL
+            **self.styles.STYLE_LABEL
         )
         self.survive_entry = tk.Entry(
-            self.settings_btns_frame, **self.STYLE_ENTRY,
+            self.settings_btns_frame, **self.styles.STYLE_ENTRY,
             validate="key",
             validatecommand=(self.root.register(self.validate_rulestring), '%P')
         )
@@ -189,14 +144,14 @@ class SettingsWindow:
 
         self.gui_settings_lbl = tk.Label(
             self.settings_btns_frame, text="Grid Settings",
-            **self.STYLE_LABEL
+            **self.styles.STYLE_LABEL
         )
         self.cols_lbl = tk.Label(
             self.settings_btns_frame, text="Columns",
-            **self.STYLE_LABEL
+            **self.styles.STYLE_LABEL
         )
         self.cols_entry = tk.Entry(
-            self.settings_btns_frame, **self.STYLE_ENTRY,
+            self.settings_btns_frame, **self.styles.STYLE_ENTRY,
             validate="key",
             validatecommand=(self.root.register(self.validate_positive_integer), '%P')
         )
@@ -204,10 +159,10 @@ class SettingsWindow:
 
         self.rows_lbl = tk.Label(
             self.settings_btns_frame, text="Rows",
-            **self.STYLE_LABEL
+            **self.styles.STYLE_LABEL
         )
         self.rows_entry = tk.Entry(
-            self.settings_btns_frame, **self.STYLE_ENTRY,
+            self.settings_btns_frame, **self.styles.STYLE_ENTRY,
             validate="key",
             validatecommand=(self.root.register(self.validate_positive_integer), '%P')
         )
@@ -215,10 +170,10 @@ class SettingsWindow:
 
         self.cell_size_lbl = tk.Label(
             self.settings_btns_frame, text="Cell Size",
-            **self.STYLE_LABEL
+            **self.styles.STYLE_LABEL
         )
         self.cell_size_entry = tk.Entry(
-            self.settings_btns_frame, **self.STYLE_ENTRY,
+            self.settings_btns_frame, **self.styles.STYLE_ENTRY,
             validate="key",
             validatecommand=(self.root.register(self.validate_positive_integer), '%P')
         )
@@ -228,15 +183,15 @@ class SettingsWindow:
 
         self.rand_settings_lbl = tk.Label(
             self.settings_btns_frame, text="Randomness Settings",
-            **self.STYLE_LABEL
+            **self.styles.STYLE_LABEL
         )
 
         self.rand_density_lbl = tk.Label(
             self.settings_btns_frame, text="Density as %",
-            **self.STYLE_LABEL
+            **self.styles.STYLE_LABEL
         )
         self.rand_density_entry = tk.Entry(
-            self.settings_btns_frame, **self.STYLE_ENTRY,
+            self.settings_btns_frame, **self.styles.STYLE_ENTRY,
             validate="key",
             validatecommand=(self.root.register(self.validate_positive_decimal), '%P')
         )
@@ -244,10 +199,10 @@ class SettingsWindow:
 
         self.seed_lbl = tk.Label(
             self.settings_btns_frame, text="Seed",
-            **self.STYLE_LABEL
+            **self.styles.STYLE_LABEL
         )
         self.seed_entry = tk.Entry(
-            self.settings_btns_frame, **self.STYLE_ENTRY
+            self.settings_btns_frame, **self.styles.STYLE_ENTRY
         )
         self.seed_entry.insert(0, "" if self.seed is None else str(self.seed))
 
@@ -381,10 +336,10 @@ class SettingsWindow:
         """
         if value.isdecimal():
             if int(value) > 0:
-                self.save_settings_btn.config(state=tk.NORMAL, **self.STYLE_CLK_BTN)
+                self.save_settings_btn.config(state=tk.NORMAL, **self.styles.STYLE_CLK_BTN)
                 return True
         elif value == '':
-            self.save_settings_btn.config(state=tk.DISABLED, **self.STYLE_GREYED_BTN)
+            self.save_settings_btn.config(state=tk.DISABLED, **self.styles.STYLE_GREYED_BTN)
             return True
         self.display_error(f"Invalid input: {value}. Must be a positive integer.")
         return False
@@ -405,11 +360,11 @@ class SettingsWindow:
         """
         if value.replace(".", "", 1).isdigit():
             if float(value) > 0:
-                self.save_settings_btn.config(state=tk.NORMAL, **self.STYLE_CLK_BTN)
+                self.save_settings_btn.config(state=tk.NORMAL, **self.styles.STYLE_CLK_BTN)
                 return True
         # Return true to allow clearing the entry but disable saving
         elif value == '':
-            self.save_settings_btn.config(state=tk.DISABLED, **self.STYLE_GREYED_BTN)
+            self.save_settings_btn.config(state=tk.DISABLED, **self.styles.STYLE_GREYED_BTN)
             return True
         self.display_error(f"Invalid input: {value}. Must be a positive decimal number.")
         return False

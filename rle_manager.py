@@ -176,6 +176,11 @@ class RLEManager:
             - survive: Set of survive rule numbers.
             Or None if parsing fails.
         """
+
+        if pattern_name not in self.available_patterns:
+            logging.error("This pattern doesn't exist.")
+            raise ValueError("This pattern doesn't exist.")
+
         parsed = self.parse_rle(pattern_name)
         if parsed is None:
             return None

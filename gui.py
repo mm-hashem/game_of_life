@@ -369,7 +369,12 @@ class GameOfLifeGUI:
         Args:
             selected_preset (str): The name of the preset to load.
         """
-        coords, birth, survive = self.rle_manager.get_configs(selected_preset)
+        try:
+            coords, birth, survive = self.rle_manager.get_configs(selected_preset)
+        except ValueError as e:
+            logging.error(f"Failed to load preset: {e}")
+            return
+
         self.engine.load_preset(coords)
         self.engine.change_rules(birth, survive)
         self.refresh_gui()

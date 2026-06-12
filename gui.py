@@ -432,7 +432,7 @@ class GameOfLifeGUI:
 
         This method restores the grid to the last saved state and refreshes the GUI.
         """
-        self.stop_loop()
+        self.clear_gui()
         self.engine.create_grid(fromsaved=True)
         self.refresh_gui()
 

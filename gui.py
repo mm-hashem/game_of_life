@@ -14,6 +14,7 @@ from settings_window import SettingsWindow
 from PIL import Image, ImageTk
 import numpy as np
 from styles import Styles
+from views.control_panel import ControlPanel
 
 class GameOfLifeGUI:
 
@@ -32,18 +33,7 @@ class GameOfLifeGUI:
         job_id: ID for the scheduled loop.
         running (bool): Whether the simulation is running.
         dragging (bool): Whether the user is dragging the canvas.
-        slider_val_prev (int): Previous slider value.
-        slider_var (tk.IntVar): Tkinter variable for the speed slider.
         ctrl_frame (tk.Frame): Frame for control buttons.
-        start_btn (tk.Button): Start/Stop button.
-        step_btn (tk.Button): Step button.
-        clear_btn (tk.Button): Clear button.
-        random_btn (tk.Button): Random button.
-        speed_slider (tk.Scale): Speed slider.
-        presets_opts (tk.StringVar): Variable for preset selection.
-        preset_opts_list (tk.OptionMenu): Option menu for presets.
-        open_settings_btn (tk.Button): Settings button.
-        cell_buttons (list): 2D list of canvas rectangles for cells.
         cells_canvas (tk.Canvas): Canvas for drawing cells.
         stats_frame (tk.Frame): Frame for statistics.
         pop_stat_lbl (tk.Label): Population label.
@@ -78,9 +68,6 @@ class GameOfLifeGUI:
         self.running  = False
         self.dragging = False
 
-        self.slider_val_prev = 1
-        self.slider_var = tk.IntVar(value=1)
-
         ##### Styles #####
         self.styles = Styles(size="medium", show_label_border=True, label_background="light")
 
@@ -99,55 +86,16 @@ class GameOfLifeGUI:
         self.ctrl_frame = tk.Frame(self.root, bg=self.styles.CLR_BG)
         self.ctrl_frame.pack()
 
-        ##### Rewind Button
-
-        self.rewind_btn = tk.Button(
-            self.ctrl_frame, text="Rewind", **self.styles.STYLE_GREYED_BTN,
-            state=tk.DISABLED, command=self.rewind
-        )
-
-        self.start_btn = tk.Button(
-            self.ctrl_frame, text="Start",
-            **(self.styles.STYLE_GREYED_BTN | {"padx": 15, "font": ("Segoe UI", 14)}),
-            state=tk.DISABLED, command=self.start
-        )
-
-        self.step_btn = tk.Button(
-            self.ctrl_frame, text="Step", **self.styles.STYLE_GREYED_BTN,
-            state=tk.DISABLED, command=self.step_gui
-        )
-        
-        self.clear_btn = tk.Button(
-            self.ctrl_frame, text="Clear", **self.styles.STYLE_GREYED_BTN,
-            state=tk.DISABLED, command=self.clear_gui
-        )
-
-        self.random_btn = tk.Button(
-            self.ctrl_frame, text="Random", **self.styles.STYLE_CLK_BTN,
-            command=self.random
-        )
-
-        self.speed_slider = tk.Scale(
-            self.ctrl_frame, **self.styles.STYLE_SLIDER, orient="horizontal",
-            from_=-10, to=10, label="1 gen/sec", variable=self.slider_var,
-            resolution=1, showvalue=0, command=lambda _:self.speed_control()
-        )
-        self.speed_slider.set(1)
-
-        self.presets_opts = tk.StringVar(value="Select pattern")
-        self.preset_opts_list = tk.OptionMenu(
-            self.ctrl_frame, self.presets_opts,
-            *self.rle_manager.available_patterns,
-            command=self.select_preset
-        )
-        self.preset_opts_list.config(**self.styles.STYLE_CLK_BTN)
-        self.preset_opts_list["menu"].config(
-            bg=self.styles.CLR_BG, fg=self.styles.CLR_TEXT, bd=0, relief="flat"
-        )
-
-        self.open_settings_btn = tk.Button(
-            self.ctrl_frame, text="Settings", **self.styles.STYLE_CLK_BTN,
-            command=self.open_settings_window
+        self.control_panel = ControlPanel(
+            self.ctrl_frame, available_patterns=self.rle_manager.available_patterns,
+            on_random=self.random,
+            on_rewind=self.rewind,
+            on_clear=self.clear_gui,
+            on_start=self.start,
+            on_step=self.step_gui,
+            on_open_settings=self.open_settings_window,
+            on_preset_select=self.select_preset,
+            on_speed_change=self.speed_control
         )
 
         #################
@@ -184,15 +132,6 @@ class GameOfLifeGUI:
         ##### Placing components #####
         ##############################
         logging.info("Placing the main window's components")
-
-        self.preset_opts_list.grid (row=0, column=0, padx=10, pady=5)
-        self.random_btn.grid       (row=0, column=1, padx=10, pady=5)
-        self.rewind_btn.grid       (row=0, column=2, padx=10, pady=5)
-        self.clear_btn.grid        (row=0, column=3, padx=10, pady=5)
-        self.start_btn.grid        (row=0, column=4, padx=10, pady=5)
-        self.step_btn.grid         (row=0, column=5, padx=10, pady=5)
-        self.speed_slider.grid     (row=0, column=6, padx=10, pady=5)
-        self.open_settings_btn.grid(row=0, column=7, padx=10, pady=5)
 
         self.pop_stat_lbl.grid    (row=0, column=0, padx=10, pady=10)
         self.gen_stat_lbl.grid    (row=0, column=1, padx=10, pady=10)
@@ -504,19 +443,11 @@ class GameOfLifeGUI:
 
     ##### Generation Speed #####
 
-    def speed_control(self) -> None:
+    def speed_control(self, slider_val: int) -> None:
         """Controls the simulation speed based on slider value.
 
         Adjusts the speed variable and reschedules the loop if running.
         """
-        slider_val = self.slider_var.get()
-
-        if self.slider_val_prev == 1 and slider_val in (-1, 0):
-            self.speed_slider.set(-2)
-        elif self.slider_val_prev == -2 and slider_val in (-1, 0):
-            self.speed_slider.set(1)
-        
-        slider_val = self.slider_var.get()
 
         if   (slider_val  < 0): self.speed = abs(slider_val)
         elif (slider_val >= 1): self.speed = 1 / slider_val
@@ -524,9 +455,6 @@ class GameOfLifeGUI:
         if self.job_id is not None and self.running:
             self.root.after_cancel(self.job_id)
             self.job_id = self.root.after(round(1000 * self.speed), self.loop)
-
-        self.slider_val_prev = slider_val
-        self.refresh_slider()
 
     ##### Cells Pan and Zoom #####
 
@@ -619,42 +547,6 @@ class GameOfLifeGUI:
         self.density_stat_lbl.config(text=f"Density: {round(self.engine.density, 2)}")
         self.growth_rate_lbl.config (text=f"Growth Rate: {round(self.engine.growth_rate, 2)}")
 
-    def refresh_slider(self) -> None:
-        """Refreshes the speed slider label.
-
-        Updates the label to show the current speed setting.
-        """
-        if self.slider_var.get() >= 1:
-            self.speed_slider.config(label=f"{self.slider_var.get()} gen/sec")
-        else:
-            self.speed_slider.config(label=f"{abs(self.slider_var.get())} sec/gen")
-
-    def refresh_buttons(self, clear_optmenu: bool) -> None:
-        """Refreshes the state of control buttons.
-
-        Args:
-            clear_optmenu: Whether to reset the preset selection.
-        """
-        next_text = "Stop" if self.running else "Start"
-        self.start_btn.config(text=next_text)
-
-        if self.engine.population > 0:
-            self.start_btn.config(bg=self.styles.CLR_CLK_BTN, state=tk.NORMAL)
-            self.clear_btn.config(bg=self.styles.CLR_CLK_BTN, state=tk.NORMAL)
-            self.step_btn.config (bg=self.styles.CLR_CLK_BTN, state=tk.NORMAL)
-        else:
-            if not self.running:
-                self.start_btn.config(bg=self.styles.CLR_GREYED_BTN, state=tk.DISABLED)
-            self.clear_btn.config(bg=self.styles.CLR_GREYED_BTN, state=tk.DISABLED)
-            self.step_btn.config (bg=self.styles.CLR_GREYED_BTN, state=tk.DISABLED)
-
-        if self.engine.is_grid_saved():
-            self.rewind_btn.config(bg=self.styles.CLR_CLK_BTN, state=tk.NORMAL)
-        else:
-            self.rewind_btn.config(bg=self.styles.CLR_GREYED_BTN, state=tk.DISABLED)
-
-        if clear_optmenu: self.presets_opts.set("Select pattern")
-
     def refresh_gui(self, clear_optmenu: bool = False) -> None:
         """Refreshes the entire GUI.
 
@@ -665,8 +557,12 @@ class GameOfLifeGUI:
         """
         logging.info("Refreshing the GUI")
 
-        self.refresh_buttons(clear_optmenu=clear_optmenu)
-        self.refresh_slider()
+        self.control_panel.refresh(
+            clear_optmenu=clear_optmenu,
+            is_running=self.running,
+            has_population=self.engine.population >= 1,
+            is_grid_saved=self.engine.is_grid_saved()
+        )
         self.draw_cells()
         self.refresh_stats()
 
@@ -744,4 +640,3 @@ class GameOfLifeGUI:
         self.cells_canvas.configure(scrollregion=(0, 0, total_w, total_h))
 
         return total_w, total_h
-

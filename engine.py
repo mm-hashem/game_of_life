@@ -101,6 +101,19 @@ class GameOfLife:
 
         self.update_stats()
 
+    def get_sliced_grid(self, row_slice: slice, col_slice: slice) -> np.ndarray:
+        """
+        Returns a sliced portion of the grid based on the provided row and column slices.
+
+        Args:
+            row_slice: A slice object representing the range of rows to return.
+            col_slice: A slice object representing the range of columns to return.
+
+        Returns:
+            A 2D array representing the sliced portion of the grid.
+        """
+        return self.grid[row_slice, col_slice]
+
     def is_grid_saved(self) -> bool:
         """
         Checks if there is a saved grid state available.

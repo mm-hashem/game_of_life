@@ -294,7 +294,7 @@ class SettingsWindow:
             raise ValueError("Invalid input values")
         
         self.settings_window.destroy()
-        self.callback(neighborhood, birth_str, survive_str, cols, rows, cell_size, density, seed)
+        self.callback(neighborhood, birth_str, survive_str, rows, cols, cell_size, density, seed)
 
     def validate_rulestring(self, rulestring: str) -> bool:
         """

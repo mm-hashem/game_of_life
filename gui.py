@@ -14,6 +14,7 @@ from styles import Styles
 from views.settings_window import SettingsWindow
 from views.control_panel import ControlPanel
 from views.grid_view import GridView
+from views.statistics_panel import StatisticsPanel
 
 class GameOfLifeGUI:
 
@@ -34,10 +35,6 @@ class GameOfLifeGUI:
         ctrl_frame (tk.Frame): Frame for control buttons.
         grid_canvas (tk.Canvas): Canvas for drawing the grid.
         stats_frame (tk.Frame): Frame for statistics.
-        pop_stat_lbl (tk.Label): Population label.
-        gen_stat_lbl (tk.Label): Generation label.
-        density_stat_lbl (tk.Label): Density label.
-        growth_rate_lbl (tk.Label): Growth rate label.
     """
 
     def __init__(
@@ -115,21 +112,7 @@ class GameOfLifeGUI:
         self.stats_frame = tk.Frame(self.root, bg=self.styles.CLR_BG)
         self.stats_frame.pack()
 
-        ##### Row 0
-        self.pop_stat_lbl     = tk.Label(self.stats_frame, text="Population: 0",    **self.styles.STYLE_LABEL)
-        self.gen_stat_lbl     = tk.Label(self.stats_frame, text="Generation: 0",    **self.styles.STYLE_LABEL)
-        self.density_stat_lbl = tk.Label(self.stats_frame, text="Density: 0.0",     **self.styles.STYLE_LABEL)
-        self.growth_rate_lbl  = tk.Label(self.stats_frame, text="Growth Rate: 0.0", **self.styles.STYLE_LABEL)
-
-        ##############################
-        ##### Placing components #####
-        ##############################
-        logging.info("Placing the main window's components")
-
-        self.pop_stat_lbl.grid    (row=0, column=0, padx=10, pady=10)
-        self.gen_stat_lbl.grid    (row=0, column=1, padx=10, pady=10)
-        self.density_stat_lbl.grid(row=0, column=2, padx=10, pady=10)
-        self.growth_rate_lbl.grid (row=0, column=3, padx=10, pady=10)
+        self.statistics_panel = StatisticsPanel(self.stats_frame)
 
     def open_settings_window(self) -> None:
         """Opens the settings window.
@@ -308,25 +291,13 @@ class GameOfLifeGUI:
 
         Adjusts the speed variable and reschedules the loop if running.
         """
-
+        
         if   (slider_val  < 0): self.speed = abs(slider_val)
         elif (slider_val >= 1): self.speed = 1 / slider_val
 
         if self.job_id is not None and self.running:
             self.root.after_cancel(self.job_id)
             self.job_id = self.root.after(round(1000 * self.speed), self.loop)
-
-    ##### GUI Refresh #####
-
-    def refresh_stats(self) -> None:
-        """Refreshes the statistics labels.
-
-        Updates the population, generation, density, and growth rate labels.
-        """
-        self.pop_stat_lbl.config    (text=f"Population: {self.engine.population}")
-        self.gen_stat_lbl.config    (text=f"Generation: {self.engine.gen}")
-        self.density_stat_lbl.config(text=f"Density: {round(self.engine.density, 2)}")
-        self.growth_rate_lbl.config (text=f"Growth Rate: {round(self.engine.growth_rate, 2)}")
 
     def refresh_gui(self, clear_optmenu: bool = False) -> None:
         """Refreshes the entire GUI.
@@ -344,5 +315,12 @@ class GameOfLifeGUI:
             has_population=self.engine.population >= 1,
             is_grid_saved=self.engine.is_grid_saved()
         )
+        
         self.grid_view.refresh()
-        self.refresh_stats()
+
+        self.statistics_panel.refresh(
+            population=self.engine.population,
+            generation=self.engine.gen,
+            density=self.engine.density,
+            growth_rate=self.engine.growth_rate
+        )

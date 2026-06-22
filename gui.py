@@ -10,8 +10,8 @@ import tkinter as tk
 import logging
 from engine import GameOfLife
 from rle_manager import RLEManager
-from settings_window import SettingsWindow
 from styles import Styles
+from views.settings_window import SettingsWindow
 from views.control_panel import ControlPanel
 from views.grid_view import GridView
 

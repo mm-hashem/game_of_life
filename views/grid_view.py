@@ -12,15 +12,13 @@ class GridView:
             rows: int,
             cols: int,
             get_sliced_grid: callable,
-            toggle_cell: callable,
-            refresh_gui: callable
+            toggle_cell: callable
         ):
 
         self._grid_canvas = grid_canvas
         
         self.toggle_cell = toggle_cell
         self.get_sliced_grid = get_sliced_grid
-        self.refresh_gui = refresh_gui
 
         self.rows = rows
         self.cols = cols
@@ -339,5 +337,3 @@ class GridView:
         logging.info(f"A cell was clicked, r: {r}, c: {c}")
 
         self.toggle_cell(r, c)
-
-        self.refresh_gui()

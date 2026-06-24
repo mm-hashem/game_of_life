@@ -101,8 +101,7 @@ class GameOfLifeGUI:
             rows=self.engine.rows,
             cols=self.engine.cols,
             get_sliced_grid=self.engine.get_sliced_grid,
-            toggle_cell=self.engine.toggle,
-            refresh_gui=self.refresh_gui
+            toggle_cell=self.toggle_cell
         )
 
         ######################
@@ -196,6 +195,10 @@ class GameOfLifeGUI:
 
         self.engine.load_preset(coords)
         self.engine.change_rules(birth, survive)
+        self.refresh_gui()
+
+    def toggle_cell(self, r: int, c: int) -> None:
+        self.engine.toggle(r, c)
         self.refresh_gui()
 
     def rewind(self) -> None:

@@ -59,9 +59,6 @@ class SettingsWindow:
 
         ##### Creating the window
         self.settings_window = tk.Toplevel(self.root, bg=self.styles.CLR_BG)
-        self.settings_window.title("Settings")
-        self.settings_window.geometry("400x350")
-        self.settings_window.protocol("WM_DELETE_WINDOW", self.settings_window.destroy)
 
         ##### Creating the buttons frame
         self.settings_btns_frame = tk.Frame(self.settings_window, bg=self.styles.CLR_BG)
@@ -74,9 +71,8 @@ class SettingsWindow:
 
         self.save_settings_btn = tk.Button(
             self.settings_btns_frame, text="Save", **self.styles.STYLE_CLK_BTN,
-            command=self.send_settings_back
+            command=self._send_settings_back
         )
-        self.settings_window.bind('<Return>', lambda event: self.save_settings_btn.invoke())
 
         ##### Notice label - Row 0
         self.info_lbl = tk.Label(
@@ -109,10 +105,6 @@ class SettingsWindow:
             self.settings_btns_frame, self.neighborhoods_opts,
             *self.neighborhoods
         )
-        self.neighborhoods_opts_list.config(**self.styles.STYLE_CLK_BTN)
-        self.neighborhoods_opts_list["menu"].config(
-            bg=self.styles.CLR_BG, fg=self.styles.CLR_TEXT, bd=0, relief="flat"
-        )
 
         ##### Birth Setting - Row 3
 
@@ -123,9 +115,8 @@ class SettingsWindow:
         self.birth_entry = tk.Entry(
             self.settings_btns_frame, **self.styles.STYLE_ENTRY,
             validate="key",
-            validatecommand=(self.root.register(self.validate_rulestring), '%P')
+            validatecommand=(self.root.register(self._validate_rulestring), '%P')
         )
-        self.birth_entry.insert(0, "".join(map(str, sorted(self.birth))))
 
         ##### Survive Setting - Row 4
 
@@ -136,9 +127,8 @@ class SettingsWindow:
         self.survive_entry = tk.Entry(
             self.settings_btns_frame, **self.styles.STYLE_ENTRY,
             validate="key",
-            validatecommand=(self.root.register(self.validate_rulestring), '%P')
+            validatecommand=(self.root.register(self._validate_rulestring), '%P')
         )
-        self.survive_entry.insert(0, "".join(map(str, sorted(self.survive))))
 
         ##### Column 2 #####
 
@@ -146,6 +136,7 @@ class SettingsWindow:
             self.settings_btns_frame, text="Grid Settings",
             **self.styles.STYLE_LABEL
         )
+
         self.cols_lbl = tk.Label(
             self.settings_btns_frame, text="Columns",
             **self.styles.STYLE_LABEL
@@ -153,9 +144,8 @@ class SettingsWindow:
         self.cols_entry = tk.Entry(
             self.settings_btns_frame, **self.styles.STYLE_ENTRY,
             validate="key",
-            validatecommand=(self.root.register(self.validate_positive_integer), '%P')
+            validatecommand=(self.root.register(self._validate_positive_integer), '%P')
         )
-        self.cols_entry.insert(0, str(self.cols))
 
         self.rows_lbl = tk.Label(
             self.settings_btns_frame, text="Rows",
@@ -164,9 +154,8 @@ class SettingsWindow:
         self.rows_entry = tk.Entry(
             self.settings_btns_frame, **self.styles.STYLE_ENTRY,
             validate="key",
-            validatecommand=(self.root.register(self.validate_positive_integer), '%P')
+            validatecommand=(self.root.register(self._validate_positive_integer), '%P')
         )
-        self.rows_entry.insert(0, str(self.rows))
 
         self.cell_size_lbl = tk.Label(
             self.settings_btns_frame, text="Cell Size",
@@ -175,9 +164,8 @@ class SettingsWindow:
         self.cell_size_entry = tk.Entry(
             self.settings_btns_frame, **self.styles.STYLE_ENTRY,
             validate="key",
-            validatecommand=(self.root.register(self.validate_positive_integer), '%P')
+            validatecommand=(self.root.register(self._validate_positive_integer), '%P')
         )
-        self.cell_size_entry.insert(0, str(self.cell_size))
 
         ##### Randomness Settings #####
 
@@ -193,9 +181,8 @@ class SettingsWindow:
         self.rand_density_entry = tk.Entry(
             self.settings_btns_frame, **self.styles.STYLE_ENTRY,
             validate="key",
-            validatecommand=(self.root.register(self.validate_positive_decimal), '%P')
+            validatecommand=(self.root.register(self._validate_positive_decimal), '%P')
         )
-        self.rand_density_entry.insert(0, str(self.rand_density * 100.0))
 
         self.seed_lbl = tk.Label(
             self.settings_btns_frame, text="Seed",
@@ -204,11 +191,30 @@ class SettingsWindow:
         self.seed_entry = tk.Entry(
             self.settings_btns_frame, **self.styles.STYLE_ENTRY
         )
+        
+        self._initialize_view()
+
+    def _initialize_view(self) -> None:
+
+        self.settings_window.title("Settings")
+        self.settings_window.geometry("400x350")
+        self.settings_window.protocol("WM_DELETE_WINDOW", self.settings_window.destroy)
+
+        self.settings_window.bind('<Return>', lambda event: self.save_settings_btn.invoke())
+
+        self.neighborhoods_opts_list.config(**self.styles.STYLE_CLK_BTN)
+        self.neighborhoods_opts_list["menu"].config(
+            bg=self.styles.CLR_BG, fg=self.styles.CLR_TEXT, bd=0, relief="flat"
+        )
+
+        self.birth_entry.insert(0, "".join(map(str, sorted(self.birth))))
+        self.survive_entry.insert(0, "".join(map(str, sorted(self.survive))))
+        self.cols_entry.insert(0, str(self.cols))
+        self.rows_entry.insert(0, str(self.rows))
+        self.cell_size_entry.insert(0, str(self.cell_size))
+        self.rand_density_entry.insert(0, str(self.rand_density * 100.0))
         self.seed_entry.insert(0, "" if self.seed is None else str(self.seed))
 
-        ##############################
-        ##### Placing components #####
-        ##############################
         logging.info("Placing the settings' window components")
 
         self.info_lbl.grid(row=0, padx=10, pady=5, columnspan=4)
@@ -258,7 +264,7 @@ class SettingsWindow:
 
         self.save_settings_btn.grid(row=9, column=0, padx=10, pady=5, columnspan=4)
     
-    def display_error(self, message: str) -> None:
+    def _display_error(self, message: str) -> None:
         """
         Displays an error message in the settings window.
         
@@ -270,7 +276,7 @@ class SettingsWindow:
         self.entry_error_lbl.config(text=message)
         self.root.after(2000, lambda: self.entry_error_lbl.config(text=""))
 
-    def send_settings_back(self):
+    def _send_settings_back(self):
         """
         Collects the settings, and sends them back via the callback.
         
@@ -290,13 +296,13 @@ class SettingsWindow:
             seed = self.seed_entry.get()
         except ValueError:
             logging.error("Invalid input values, cannot save settings")
-            self.display_error("Invalid input values")
+            self._display_error("Invalid input values")
             raise ValueError("Invalid input values")
         
         self.settings_window.destroy()
         self.callback(neighborhood, birth_str, survive_str, rows, cols, cell_size, density, seed)
 
-    def validate_rulestring(self, rulestring: str) -> bool:
+    def _validate_rulestring(self, rulestring: str) -> bool:
         """
         Validates the birth/survival rulestring input.
         
@@ -317,10 +323,10 @@ class SettingsWindow:
         neighbors = 8 if self.neighborhoods_opts.get() == "Moore" else 4
         if len(rule) <= neighbors + 1 and all(x <= neighbors for x in rule):
             return True
-        self.display_error(f"Invalid rulestring: {rulestring}.\nMust be digits 0-{neighbors} with no duplicates.")
+        self._display_error(f"Invalid rulestring: {rulestring}.\nMust be digits 0-{neighbors} with no duplicates.")
         return False
     
-    def validate_positive_integer(self, value: str) -> bool:
+    def _validate_positive_integer(self, value: str) -> bool:
         """
         Validates positive integer inputs.
         
@@ -341,10 +347,10 @@ class SettingsWindow:
         elif value == '':
             self.save_settings_btn.config(state=tk.DISABLED, **self.styles.STYLE_GREYED_BTN)
             return True
-        self.display_error(f"Invalid input: {value}. Must be a positive integer.")
+        self._display_error(f"Invalid input: {value}. Must be a positive integer.")
         return False
     
-    def validate_positive_decimal(self, value: str) -> bool:
+    def _validate_positive_decimal(self, value: str) -> bool:
         """
         Validates positive decimal inputs.
         
@@ -366,5 +372,5 @@ class SettingsWindow:
         elif value == '':
             self.save_settings_btn.config(state=tk.DISABLED, **self.styles.STYLE_GREYED_BTN)
             return True
-        self.display_error(f"Invalid input: {value}. Must be a positive decimal number.")
+        self._display_error(f"Invalid input: {value}. Must be a positive decimal number.")
         return False
